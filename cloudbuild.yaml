@@ -37,6 +37,7 @@ steps:
         "--quiet"
       ]
 
+logsBucket: "dist_hackathon"
 serviceAccount: "projects/nomadic-bison-459812-a8/serviceAccounts/ca-build-cicd@nomadic-bison-459812-a8.iam.gserviceaccount.com"
 options:
   logging: GCS_ONLY
