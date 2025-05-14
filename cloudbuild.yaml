@@ -5,7 +5,7 @@ steps:
       [
         "build",
         "-t",
-        "asia-northeast1-docker.pkg.dev/${PROJECT_ID}/googlehack/my-image:latest",
+        "asia-northeast1-docker.pkg.dev/nomadic-bison-459812-a8/googlehack/my-image:latest",
         ".",
       ]
   # Push the container image to Container Registry
@@ -13,7 +13,7 @@ steps:
     args:
       [
         "push",
-        "asia-northeast1-docker.pkg.dev/${PROJECT_ID}/googlehack/my-image",
+        "asia-northeast1-docker.pkg.dev/nomadic-bison-459812-a8/googlehack/my-image",
       ]
   # Deploy container image to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -24,7 +24,7 @@ steps:
         "deploy",
         "my-image",
         "--image",
-        "asia-northeast1-docker.pkg.dev/${PROJECT_ID}/googlehack/my-image:latest",
+        "asia-northeast1-docker.pkg.dev/nomadic-bison-459812-a8/googlehack/my-image:latest",
         "--platform",
         "managed",
         "--allow-unauthenticated",
@@ -33,10 +33,10 @@ steps:
         "--region",
         "asia-northeast1",
         "--project",
-        "${PROJECT_ID}",
+        "nomadic-bison-459812-a8",
         "--quiet"
       ]
 
-serviceAccount: "projects/${PROJECT_ID}/serviceAccounts/ca-build-cicd@${PROJECT_ID}.iam.gserviceaccount.com"
+serviceAccount: "projects/nomadic-bison-459812-a8/serviceAccounts/ca-build-cicd@nomadic-bison-459812-a8.iam.gserviceaccount.com"
 options:
   logging: GCS_ONLY
