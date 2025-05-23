@@ -57,12 +57,6 @@
 		</dependency>
 
 		<dependency>
-  			<groupId>com.google.cloud.sql</groupId>
-  			<artifactId>postgres-socket-factory</artifactId>
-  			<version>1.14.0</version>
-		</dependency>
-
-		<dependency>
   			<groupId>org.postgresql</groupId>
   			<artifactId>postgresql</artifactId>
   			<version>42.7.2</version>
@@ -72,12 +66,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
-		</dependency>
-		<!-- PostgreSQL JDBC Driver -->
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
 		</dependency>
 
 		<dependency>
