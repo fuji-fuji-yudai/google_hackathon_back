@@ -36,8 +36,8 @@ steps:
         "nomadic-bison-459812-a8",
         "--quiet",
         "--add-cloudsql-instances=nomadic-bison-459812-a8:us-central1:google-hackathon-dist",
-        # "--set-env-vars=SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/postgres,SPRING_DATASOURCE_USERNAME=postgres,SPRING_DATASOURCE_PASSWORD=morimoridist"
-      ]
+        "--set-env-vars=SPRING_DATASOURCE_URL=jdbc:postgresql:///postgres?cloudSqlInstance=nomadic-bison-459812-a8:us-central1:google-hackathon-dist&socketFactory=com.google.cloud.sql.postgres.SocketFactory,SPRING_DATASOURCE_USERNAME=postgres,SPRING_DATASOURCE_PASSWORD=morimoridist"
+        ]
 
 logsBucket: "dist_hackathon"
 serviceAccount: "projects/nomadic-bison-459812-a8/serviceAccounts/ca-build-cicd@nomadic-bison-459812-a8.iam.gserviceaccount.com"
