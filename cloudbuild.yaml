@@ -35,7 +35,7 @@ steps:
         "--project",
         "nomadic-bison-459812-a8",
         "--quiet",
-        "--add-cloudsql-instances=nomadic-bison-459812-a8:us-central1:google-hackathon-dist",
+        "--add-cloudsql-instances=nomadic-bison-459812-a8:asia-northeast1:google-hackathon-dist2",
         "--set-env-vars=SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/postgres,SPRING_DATASOURCE_USERNAME=postgres,SPRING_DATASOURCE_PASSWORD=morimoridist"
       ]
 
