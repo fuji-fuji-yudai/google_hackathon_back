@@ -1,5 +1,5 @@
 # ベースイメージの指定
-FROM openjdk:17
+FROM openjdk:17-slim
 
 # ワーキングディレクトリの設定
 WORKDIR /app
