@@ -7,6 +7,10 @@ WORKDIR /app
 # アプリケーションのJARファイルをコンテナにコピー
 COPY target/*.jar app.jar
 
+
+# Cloud SQL Socket Factory に必要なライブラリを含める
+RUN apt-get update && apt-get install -y libnss3
+
 # ポートの公開
 EXPOSE 8080
 
