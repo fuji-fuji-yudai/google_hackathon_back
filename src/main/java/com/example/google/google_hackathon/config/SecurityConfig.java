@@ -4,11 +4,9 @@ import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.*;
 import org.springframework.security.web.SecurityFilterChain;
-import com.example.google.google_hackathon.service.CustomUserDetailsService;
 
 @Configuration // このクラスはSpringの設定クラスとして扱われる
 public class SecurityConfig {
