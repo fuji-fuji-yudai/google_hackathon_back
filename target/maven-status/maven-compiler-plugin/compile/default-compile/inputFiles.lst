@@ -1,2 +1,7 @@
-C:\googleHackathon\google_hackathon\src\main\java\com\example\google\google_hackathon\controller\DemoController.java
-C:\googleHackathon\google_hackathon\src\main\java\com\example\google\google_hackathon\GoogleHackathonApplication.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\SecurityConfig.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\DemoController.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\HomeController.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\AppUser.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\GoogleHackathonApplication.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\AppUserRepository.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\CustomUserDetailsService.java
