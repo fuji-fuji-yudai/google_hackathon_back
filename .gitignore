@@ -1,6 +1,6 @@
 HELP.md
 # 既存のエントリをコメントアウトまたは削除
-# target/
+target/
 # 特定の JAR ファイルを追跡するように追加
 !target/*.jar
 !.mvn/wrapper/maven-wrapper.jar
