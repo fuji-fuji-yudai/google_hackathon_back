@@ -16,7 +16,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 @Component
 public class JwtTokenProvider {
 
-    private final String jwtSecret = "your-secret-key"; // 適切な長さの秘密鍵を使用してください
+    private final String jwtSecret = "a-very-long-and-secure-secret-key-that-is-at-least-64-bytes-long-1234567890!@#$%^&*()"; // 適切な長さの秘密鍵を使用してください
     private final long jwtExpirationMs = 86400000; // 1日（ミリ秒）
 
     // 🔐 署名用のキーを生成
