@@ -40,6 +40,7 @@ public CustomUserDetailsService(AppUserRepository userRepository) {
         System.out.println(">>> ユーザー名: " + username);
         System.out.println(">>> DBから取得したパスワード: " + user.getPassword());
         System.out.println(">>> 権限: " + user.getRole());
+        System.out.println("ドッカー変えたよ " );
 
         // DBのユーザー情報を Spring Security 用の UserDetails に変換して返す
         return User.builder()
