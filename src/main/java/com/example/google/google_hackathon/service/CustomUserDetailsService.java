@@ -14,6 +14,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired // AppUserRepository を自動注入（DBアクセス用）
     private AppUserRepository userRepository;
 
+    
+public CustomUserDetailsService(AppUserRepository userRepository) {
+        this.userRepository = userRepository;
+        }
+
+
     /**
      * ユーザー名をもとにデータベースからユーザー情報を取得し、
      * Spring Security が使える UserDetails に変換して返す。

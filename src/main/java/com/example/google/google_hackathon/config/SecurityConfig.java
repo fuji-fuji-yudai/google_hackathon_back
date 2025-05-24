@@ -1,56 +1,45 @@
 package com.example.google.google_hackathon.config;
-
-import org.springframework.context.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.*;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-@Configuration // このクラスはSpringの設定クラスとして扱われる
+import com.example.google.google_hackathon.security.JwtAuthenticationFilter;
+
+@Configuration
 public class SecurityConfig {
 
-    /**
-     * アプリケーション全体のセキュリティ設定を定義する。
-     * - 全リクエストを認証必須とする
-     * - デフォルトのログインフォーム (/login) を使う
-     */
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            // 全てのHTTPリクエストに対して認証を要求
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/login").permitAll()
                 .anyRequest().authenticated()
             )
-            // デフォルトのログインフォーム (/login) を有効化
-            .formLogin(form -> form
-                .permitAll() // 誰でもログインページにはアクセス可能
-            );
-
-        return http.build(); // SecurityFilterChain を返す
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, excep) ->
+                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+                )
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
     }
 
-    /**
-     * パスワードの暗号化方式を定義する。
-     * - BCrypt を使用（セキュアなハッシュ方式）
-     * - ユーザー登録時やログイン時に利用される
-     */
     @Bean
-    public PasswordEncoder passwordEncoder() {
-         System.out.println("PasswordEncoder Bean initialized");
-        return new BCryptPasswordEncoder();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
-
-    /**
-     * 認証マネージャーを取得する。
-     * - Spring Boot が自動構成した AuthenticationManager を使用
-     * - UserDetailsService や PasswordEncoder の設定に基づいて動作
-     */
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
-
 }
