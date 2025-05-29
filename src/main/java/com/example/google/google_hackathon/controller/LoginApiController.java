@@ -30,7 +30,8 @@ public class LoginApiController {
     private JwtTokenProvider jwtTokenProvider;
 
     
-    @CrossOrigin(origins = "http://localhost:8080", allowCredentials = "true")
+    //@CrossOrigin(origins = "http://localhost:8080", allowCredentials = "true")
+    @CrossOrigin(origins = "https://my-frontimage-14467698004.asia-northeast1.run.app", allowCredentials = "true")
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
     try {
