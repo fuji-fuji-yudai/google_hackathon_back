@@ -33,7 +33,7 @@ public CustomUserDetailsService(AppUserRepository userRepository) {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // username をもとに DB からユーザーを検索（見つからない場合は例外を投げる）
+       try{ // username をもとに DB からユーザーを検索（見つからない場合は例外を投げる）
         AppUser user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
@@ -48,5 +48,11 @@ public CustomUserDetailsService(AppUserRepository userRepository) {
                 .password(user.getPassword()) // ハッシュ化されたパスワード
                 .roles(user.getRole().replace("ROLE_", "")) // 権限（"ROLE_" は自動付与されるので除去）
                 .build();
-    }
+    
+} catch (Exception e) {
+e.printStackTrace(); // ここで例外の詳細を出力
+ throw e;
+}
+
+}
 }
