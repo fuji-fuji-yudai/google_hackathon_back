@@ -1,4 +1,5 @@
 package com.example.google.google_hackathon.config;
+
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,12 +49,10 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    
     @Bean
     public PasswordEncoder passwordEncoder() {
-         System.out.println("PasswordEncoder Bean initialized");
+        System.out.println("PasswordEncoder Bean initialized");
         return new BCryptPasswordEncoder();
     }
-
 
 }
