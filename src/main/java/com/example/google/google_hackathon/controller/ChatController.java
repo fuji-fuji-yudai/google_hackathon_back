@@ -28,6 +28,7 @@ public class ChatController {
                             @Payload ChatMessage message,
                             @DestinationVariable String roomId) {
         String token = authHeader.replace("Bearer ", "");
+        System.out.println("トークンはこちら！！"+token);
         if (JwtUtil.validateToken(token)) {
             String username = JwtUtil.getUsernameFromToken(token);
             message.setSender(username);
