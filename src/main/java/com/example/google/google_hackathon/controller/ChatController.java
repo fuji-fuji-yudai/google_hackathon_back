@@ -21,10 +21,9 @@ public class ChatController {
   }
 
   @MessageMapping("/chat/{roomId}")
-public void sendMessage(@Payload ChatMessage message, Message<?> rawMessage) {
+  public void sendMessage(@Payload ChatMessage message, Message<?> rawMessage) {
     SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(rawMessage);
     Principal principal = accessor.getUser();
-
     System.out.println("📨 メッセージ受信: " + message.getText());
     System.out.println("Principal from header: " + (principal != null ? principal.getName() : "null"));
 
