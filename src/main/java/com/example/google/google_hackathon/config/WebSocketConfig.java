@@ -1,8 +1,11 @@
 package com.example.google.google_hackathon.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.*;
+
+import com.example.google.google_hackathon.interceptor.JwtChannelInterceptor;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -20,4 +23,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             .setAllowedOriginPatterns("*") // CORS 対応
             .withSockJS(); // SockJS を有効化
   }
+
+  
+  public void configureClientInboundChannel(ChannelRegistration registration) {
+    registration.interceptors(new JwtChannelInterceptor());
+  }
+
 }

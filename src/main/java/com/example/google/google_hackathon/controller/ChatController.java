@@ -1,4 +1,6 @@
 package com.example.google.google_hackathon.controller;
+import java.security.Principal;
+
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -17,7 +19,8 @@ public class ChatController {
   }
 
   @MessageMapping("/chat/{roomId}") // /app/chat/{roomId} に対応
-  public void sendMessage(@Payload ChatMessage message) {
+  public void sendMessage(@Payload ChatMessage message,Principal principal) {
+    message.setSender(principal.getName());
     // DB保存処理をここに追加してもOK
     messagingTemplate.convertAndSend("/topic/chat/" + message.getRoomId(), message);
   }
