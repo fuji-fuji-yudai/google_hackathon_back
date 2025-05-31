@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             .withSockJS(); // SockJS を有効化
   }
 
-  
+  @Override
   public void configureClientInboundChannel(ChannelRegistration registration) {
     registration.interceptors(new JwtChannelInterceptor());
   }
