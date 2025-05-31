@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 
 public class JwtUtil {
@@ -12,7 +13,8 @@ public class JwtUtil {
     
     public static boolean validateToken(String token) {
     try {
-    Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token);
+    Jwts.parser().setSigningKey(SECRET_KEY.getBytes(StandardCharsets.UTF_8))
+.parseClaimsJws(token);
     return true;
     } catch (Exception e) {
         return false;
