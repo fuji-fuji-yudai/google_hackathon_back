@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
-    @Override
+@Override
 public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                WebSocketHandler wsHandler, Map<String, Object> attributes) {
     List<String> authHeaders = request.getHeaders().get("Authorization");

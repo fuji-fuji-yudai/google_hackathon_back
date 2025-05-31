@@ -33,15 +33,15 @@ public void registerStompEndpoints(StompEndpointRegistry registry) {
                     return (Principal) attributes.get("principal"); // 👈 beforeHandshakeで設定したPrincipalを返す
                 }
             })
-            .addInterceptors(new JwtHandshakeInterceptor())
+            //.addInterceptors(new JwtHandshakeInterceptor())
             .setAllowedOriginPatterns("*")
             .withSockJS();
 }
 
 
-  @Override
-  public void configureClientInboundChannel(ChannelRegistration registration) {
-    registration.interceptors(new JwtChannelInterceptor());
-  }
+  // @Override
+  // public void configureClientInboundChannel(ChannelRegistration registration) {
+  //   registration.interceptors(new JwtChannelInterceptor());
+  // }
 
 }
