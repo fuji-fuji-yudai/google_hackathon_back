@@ -1,5 +1,7 @@
 package com.example.google.google_hackathon.interceptor;
 
+import java.security.Principal;
+
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -21,10 +23,29 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                 token = token.substring(7);
                 if (JwtUtil.validateToken(token)) {
                     String username = JwtUtil.getUsernameFromToken(token);
-                                   }
+                    Principal userPrincipal = new StompPrincipal(username);
+                    accessor.setUser(userPrincipal);
+                }
             }
         }
-
+        
         return message;
-    }
+        
+    }   
+
+
+        // Principal 実装クラス
+        private static class StompPrincipal implements Principal {
+            private final String name;
+
+            public StompPrincipal(String name) {
+            this.name = name;
+            }
+
+            @Override
+            public String getName() {
+            return name;
+            }
+        }
+    
 }
