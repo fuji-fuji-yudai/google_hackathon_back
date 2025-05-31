@@ -13,6 +13,7 @@ import com.example.google.google_hackathon.security.JwtUtil;
 
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
+    @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
