@@ -20,9 +20,11 @@ public class ChatController {
 
   @MessageMapping("/chat/{roomId}") // /app/chat/{roomId} に対応
   public void sendMessage(@Payload ChatMessage message,Principal principal) {
-    message.setSender(principal.getName());
+    System.out.println("📨 メッセージ受信: " + message.getText());
     System.out.println("Principal: " + (principal != null ? principal.getName() : "null"));
+    message.setSender(principal.getName());
     // DB保存処理をここに追加してもOK
     messagingTemplate.convertAndSend("/topic/chat/" + message.getRoomId(), message);
   }
+
 }
