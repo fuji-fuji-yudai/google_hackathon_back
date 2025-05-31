@@ -7,7 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import java.security.Key;
 
 public class JwtUtil {
-    private static final String SECRET_KEY = "your-256-bit-secret-your-256-bit-secret"; // 32文字以上
+    private static final String SECRET_KEY = "a-very-long-and-secure-secret-key-that-is-at-least-64-bytes-long-1234567890!@#$%^&*()"; // 32文字以上
 
     private static Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
