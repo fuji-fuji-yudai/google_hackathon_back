@@ -1,6 +1,6 @@
 package com.example.google.google_hackathon.interceptor;
 
-import java.security.Principal;
+import java.util.Collections;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -13,41 +13,33 @@ import com.example.google.google_hackathon.security.JwtUtil;
 
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
-    @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String token = accessor.getFirstNativeHeader("Authorization");
             System.out.println("🔐 Authorization ヘッダー: " + token);
-            
+
             if (token != null && token.startsWith("Bearer ")) {
                 token = token.substring(7);
                 if (JwtUtil.validateToken(token)) {
                     String username = JwtUtil.getUsernameFromToken(token);
-                    Principal userPrincipal = new StompPrincipal(username);
-                    accessor.setUser(userPrincipal);
+
+                    // Spring Security が認識できる Principal をセット
+                    UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+
+                    accessor.setUser(authentication);
+                    System.out.println("✅ Principal セット: " + username);
+                } else {
+                    System.out.println("❌ トークン検証失敗");
                 }
+            } else {
+                System.out.println("⚠️ Authorization ヘッダーが無効または存在しない");
             }
         }
-        
+
         return message;
-        
-    }   
-
-
-        // Principal 実装クラス
-        private static class StompPrincipal implements Principal {
-            private final String name;
-
-            public StompPrincipal(String name) {
-            this.name = name;
-            }
-
-            @Override
-            public String getName() {
-            return name;
-            }
-        }
-    
+    }
 }
+
