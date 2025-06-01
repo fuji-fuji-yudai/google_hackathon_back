@@ -44,13 +44,14 @@ public class ChatController {
             message.setSender("anonymous");
         }
         message.setRoomId(roomId);
+        System.out.println("保存前のメッセージ: " + message);
         ChatMessageService.saveMessage(message);
         //クライアントに送信
         messagingTemplate.convertAndSend("/topic/chat/" + roomId, message);
     }
 
     @GetMapping("/chat/history/{roomId}")
-public ResponseEntity<List<ChatMessageEntity>> getChatHistory(@PathVariable String roomId) {
+    public ResponseEntity<List<ChatMessageEntity>> getChatHistory(@PathVariable String roomId) {
     List<ChatMessageEntity> messages = ChatMessageService.getMessages(roomId);
     return ResponseEntity.ok(messages); // 常に200 OKで返す
 
