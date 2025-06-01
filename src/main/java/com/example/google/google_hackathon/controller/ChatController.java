@@ -2,6 +2,7 @@ package com.example.google.google_hackathon.controller;
 import java.security.Principal;
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
@@ -49,8 +50,10 @@ public class ChatController {
     }
 
     @GetMapping("/chat/history/{roomId}")
-    public List<ChatMessageEntity> getChatHistory(@PathVariable String roomId) {
-    return ChatMessageService.getMessages(roomId);
+public ResponseEntity<List<ChatMessageEntity>> getChatHistory(@PathVariable String roomId) {
+    List<ChatMessageEntity> messages = ChatMessageService.getMessages(roomId);
+    return ResponseEntity.ok(messages); // 常に200 OKで返す
+
 }
 
 }
