@@ -18,6 +18,7 @@ public Firestore firestore() throws IOException {
 if (FirebaseApp.getApps().isEmpty()) {
 FirebaseOptions options = FirebaseOptions.builder()
 .setCredentials(GoogleCredentials.getApplicationDefault())
+.setProjectId("nomadic-bison-459812-a8")
 .build();
 FirebaseApp.initializeApp(options);
 }
