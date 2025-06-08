@@ -16,7 +16,7 @@ public class VertexAIService {
 
     private static final String PROJECT_ID = "nomadic-bison-459812-a8";
     private static final String ENDPOINT = String.format(
-        "https://us-central1-aiplatform.googleapis.com/v1/projects/%s/locations/us-central1/publishers/google/models/textembedding-gecko:predict",
+        "https://us-central1-aiplatform.googleapis.com/v1/projects/%s/locations/us-central1/publishers/google/models/gemini-embedding-001:predict",
         PROJECT_ID
     );
 
