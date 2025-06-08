@@ -2,7 +2,9 @@ package com.example.google.google_hackathon.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.example.google.google_hackathon.listener.ChatMessageListener;
 
+@EntityListeners(ChatMessageListener.class)
 @Entity
 @Table(name = "chat_messages",schema = "public")
 public class ChatMessageEntity {
