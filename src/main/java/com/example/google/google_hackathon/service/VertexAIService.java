@@ -14,7 +14,7 @@ import java.util.stream.StreamSupport;
 @Service
 public class VertexAIService {
 
-    private static final String PROJECT_ID = "nomadic-bison-459812-a8"; // ← ここを修正
+    private static final String PROJECT_ID = "nomadic-bison-459812-a8";
     private static final String ENDPOINT = String.format(
         "https://us-central1-aiplatform.googleapis.com/v1/projects/%s/locations/us-central1/publishers/google/models/textembedding-gecko:predict",
         PROJECT_ID
@@ -44,7 +44,7 @@ public class VertexAIService {
 
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
-        JsonArray vector = json.getAsJsonArray("predictions").get(0).getAsJsonObject().getAsJsonArray("embeddings");
+        JsonArray vector = json.getAsJsonArray("predictions").get(0).getAsJsonObject().getAsJsonArray("values");
 
         return StreamSupport.stream(vector.spliterator(), false)
             .map(JsonElement::getAsDouble)
