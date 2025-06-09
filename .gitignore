@@ -1,6 +1,7 @@
 HELP.md
 # 既存のエントリをコメントアウトまたは削除
-target/
+/target/
+**/target/
 # 特定の JAR ファイルを追跡するように追加
 !target/*.jar
 !.mvn/wrapper/maven-wrapper.jar
@@ -15,7 +16,7 @@ target/
 .settings
 .springBeans
 .sts4-cache
-
+*.class
 ### IntelliJ IDEA ###
 .idea
 *.iws
