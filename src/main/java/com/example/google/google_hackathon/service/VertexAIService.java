@@ -61,9 +61,18 @@ public class VertexAIService {
     //     throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
     // }
 
-    JsonObject firstPrediction = predictions.get(0).getAsJsonObject();
-    JsonArray vector = firstPrediction.has("values") ? firstPrediction.getAsJsonArray("values") : null;
-    logger.debug("Embedding vector size: {}", vector.size());
+   JsonObject firstPrediction = predictions.get(0).getAsJsonObject();
+
+JsonArray vector = null;
+if (firstPrediction.has("values") && firstPrediction.get("values").isJsonArray()) {
+    vector = firstPrediction.getAsJsonArray("values");
+}
+
+if (vector == null || vector.size() == 0) {
+    throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
+}
+
+logger.debug("Embedding vector size: {}", vector.size());
 
 
     if (vector == null || vector.size() == 0) {
