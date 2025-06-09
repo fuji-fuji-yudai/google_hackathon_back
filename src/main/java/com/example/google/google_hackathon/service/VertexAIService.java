@@ -35,7 +35,7 @@ public class VertexAIService {
     instances.add(instance);
     requestBody.add("instances", instances);
 
-    logger.debug("Vertex AI embedding request body: {}", requestBody.toString());
+    //logger.debug("Vertex AI embedding request body: {}", requestBody.toString());
 
     HttpRequest request = HttpRequest.newBuilder()
         .uri(URI.create(ENDPOINT))
@@ -46,7 +46,7 @@ public class VertexAIService {
 
     HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
-    logger.debug("Vertex AI embedding response body: {}", response.body());
+    //logger.debug("Vertex AI embedding response body: {}", response.body());
 
     JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
     JsonArray predictions = json.getAsJsonArray("predictions");
