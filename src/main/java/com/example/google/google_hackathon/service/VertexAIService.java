@@ -55,11 +55,21 @@ public class VertexAIService {
         throw new RuntimeException("Vertex AI embedding API returned no predictions: " + response.body());
     }
 
-    JsonArray vector = predictions.get(0).getAsJsonObject().getAsJsonArray("values");
+    // JsonArray vector = predictions.get(0).getAsJsonObject().getAsJsonArray("values");
 
-    if (vector == null) {
-        throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
+    // if (vector == null) {
+    //     throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
+    // }
+
+    JsonObject firstPrediction = predictions.get(0).getAsJsonObject();
+    JsonArray vector = firstPrediction.has("values") ? firstPrediction.getAsJsonArray("values") : null;
+    logger.debug("Embedding vector size: {}", vector.size());
+
+
+    if (vector == null || vector.size() == 0) {
+    throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
     }
+
 
     return StreamSupport.stream(vector.spliterator(), false)
         .map(JsonElement::getAsDouble)
