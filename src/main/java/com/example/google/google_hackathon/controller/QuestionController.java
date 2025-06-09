@@ -25,13 +25,13 @@ public class QuestionController {
     @PostMapping("/ask")
 public ResponseEntity<Map<String, String>> askQuestion(@RequestBody QuestionRequest request) {
     try {
-        List<SimilarMessage> topMessages = similarityService.findSimilarMessages(request.getQuestion(), 5);
+        List<SimilarMessage> topMessages = similarityService.findSimilarMessages(request.getQuestion(), 5);//似た過去のメッセージを取得
         List<String> messages = topMessages.stream()
                 .map(SimilarMessage::getMessage)
                 .collect(Collectors.toList());
 
-        String answer = geminiService.generateAnswer(request.getQuestion(), messages);
-        return ResponseEntity.ok(Map.of("answer", answer));
+        String answer = geminiService.generateAnswer(request.getQuestion(), messages);//質問と類似メッセージを渡して回答生成
+        return ResponseEntity.ok(Map.of("answer", answer));//回答をjson形式で返す。
     } catch (Exception e) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "エラーが発生しました: " + e.getMessage()));
