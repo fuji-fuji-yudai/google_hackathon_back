@@ -61,11 +61,12 @@ public class VertexAIService {
     //     throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
     // }
 
-   JsonObject firstPrediction = predictions.get(0).getAsJsonObject();
+JsonObject firstPrediction = predictions.get(0).getAsJsonObject();
+JsonObject embeddings = firstPrediction.has("embeddings") ? firstPrediction.getAsJsonObject("embeddings") : null;
 
 JsonArray vector = null;
-if (firstPrediction.has("values") && firstPrediction.get("values").isJsonArray()) {
-    vector = firstPrediction.getAsJsonArray("values");
+if (embeddings != null && embeddings.has("values") && embeddings.get("values").isJsonArray()) {
+    vector = embeddings.getAsJsonArray("values");
 }
 
 if (vector == null || vector.size() == 0) {
@@ -74,15 +75,10 @@ if (vector == null || vector.size() == 0) {
 
 logger.debug("Embedding vector size: {}", vector.size());
 
+return StreamSupport.stream(vector.spliterator(), false)
+    .map(JsonElement::getAsDouble)
+    .collect(Collectors.toList());
 
-    if (vector == null || vector.size() == 0) {
-    throw new RuntimeException("Vertex AI embedding API returned no values: " + response.body());
-    }
-
-
-    return StreamSupport.stream(vector.spliterator(), false)
-        .map(JsonElement::getAsDouble)
-        .collect(Collectors.toList());
 }
 
 }
