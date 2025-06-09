@@ -48,7 +48,7 @@ public class GeminiService {
             requestBody.add("contents", contents);
 
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://us-central1-aiplatform.googleapis.com/v1/projects/nomadic-bison-459812-a8/locations/us-central1/publishers/google/models/gemini-1.5-pro-preview-0409:generateContent"))
+                .uri(URI.create("https://us-central1-aiplatform.googleapis.com/v1/projects/nomadic-bison-459812-a8/locations/us-central1/publishers/google/models/gemini-2.0-flash-001:generateContent"))
                 .header("Authorization", "Bearer " + accessToken)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
