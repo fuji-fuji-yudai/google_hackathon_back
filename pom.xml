@@ -97,7 +97,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-<<<<<<< HEAD
 		<dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -115,7 +114,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-=======
 
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -150,7 +148,6 @@
   			<version>9.2.0</version> <!-- 最新版に更新してもOK -->
 		</dependency>
 		
->>>>>>> 0e962d0c8391825ebf262ed9205c6b113b96d67a
 	</dependencies>
 
 

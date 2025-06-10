@@ -22,6 +22,7 @@ HELP.md
 *.iws
 *.iml
 *.ipr
+*.json
 
 ### NetBeans ###
 /nbproject/private/
