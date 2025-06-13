@@ -25,6 +25,7 @@ public class SimilarityService {
         ApiFuture<QuerySnapshot> future = db.collection("chat_embeddings")
         .whereEqualTo("room_id", roomId)
         .get();
+        System.out.println("roomId: " + roomId);
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
 
         // 3. 類似度を計算
