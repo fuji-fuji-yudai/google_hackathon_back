@@ -17,12 +17,14 @@ public class SimilarityService {
     @Autowired
     private VertexAIService vertexAIService;
 
-    public List<SimilarMessage> findSimilarMessages(String userQuestion, int topK) throws Exception {
+    public List<SimilarMessage> findSimilarMessages(String userQuestion, String roomId,int topK) throws Exception {
         // 1. ユーザーの質問をベクトル化
         List<Double> userEmbedding = vertexAIService.generateEmbedding(userQuestion);
 
         // 2. Firestore から履歴を取得
-        ApiFuture<QuerySnapshot> future = db.collection("chat_embeddings").get();
+        ApiFuture<QuerySnapshot> future = db.collection("chat_embeddings")
+        .whereEqualTo("room_id", roomId)
+        .get();
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
 
         // 3. 類似度を計算

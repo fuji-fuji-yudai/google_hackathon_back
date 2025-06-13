@@ -3,7 +3,7 @@ HELP.md
 /target/
 **/target/
 # 特定の JAR ファイルを追跡するように追加
-!target/*.jar
+# !target/*.jar
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

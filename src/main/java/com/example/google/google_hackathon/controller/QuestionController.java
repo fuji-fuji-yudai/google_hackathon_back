@@ -25,7 +25,8 @@ public class QuestionController {
     @PostMapping("/ask")
 public ResponseEntity<Map<String, String>> askQuestion(@RequestBody QuestionRequest request) {
     try {
-        List<SimilarMessage> topMessages = similarityService.findSimilarMessages(request.getQuestion(), 5);//似た過去のメッセージを取得
+        String roomId = request.getRoomId();
+        List<SimilarMessage> topMessages = similarityService.findSimilarMessages(request.getQuestion(), roomId,5);//似た過去のメッセージを取得
         List<String> messages = topMessages.stream()
                 .map(SimilarMessage::getMessage)
                 .collect(Collectors.toList());
