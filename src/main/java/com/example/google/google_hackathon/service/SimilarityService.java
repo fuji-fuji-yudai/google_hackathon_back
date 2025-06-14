@@ -22,8 +22,10 @@ public class SimilarityService {
         List<Double> userEmbedding = vertexAIService.generateEmbedding(userQuestion);
 
         // 2. Firestore から履歴を取得
+        String roomIdEnd = roomId + "\uf8ff";
         ApiFuture<QuerySnapshot> future = db.collection("chat_embeddings")
-        .whereEqualTo("room_id", roomId)
+        .whereGreaterThanOrEqualTo("room_id", roomId)
+        .whereLessThanOrEqualTo("room_id", roomIdEnd)
         .get();
         System.out.println("roomId: " + roomId);
         List<QueryDocumentSnapshot> documents = future.get().getDocuments();
