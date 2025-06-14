@@ -12,11 +12,11 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired // AppUserRepository を自動注入（DBアクセス用）
-    private AppUserRepository userRepository;
+    private AppUserRepository AppUserRepository;
 
     
 public CustomUserDetailsService(AppUserRepository userRepository) {
-        this.userRepository = userRepository;
+        this.AppUserRepository = userRepository;
         }
 
 
@@ -34,13 +34,12 @@ public CustomUserDetailsService(AppUserRepository userRepository) {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
        try{ // username をもとに DB からユーザーを検索（見つからない場合は例外を投げる）
-        AppUser user = userRepository.findByUsername(username)
+        AppUser user = AppUserRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         System.out.println(">>> ユーザー名: " + username);
         System.out.println(">>> DBから取得したパスワード: " + user.getPassword());
         System.out.println(">>> 権限: " + user.getRole());
-        System.out.println("ドッカー変えたよ " );
 
         // DBのユーザー情報を Spring Security 用の UserDetails に変換して返す
         return User.builder()

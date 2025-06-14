@@ -1,3 +1,4 @@
+com\example\google\google_hackathon\entity\Room.class
 com\example\google\google_hackathon\listener\ChatMessageListener.class
 com\example\google\google_hackathon\config\FirestoreConfig.class
 com\example\google\google_hackathon\interceptor\JwtChannelInterceptor.class
@@ -8,6 +9,7 @@ com\example\google\google_hackathon\service\GeminiService.class
 com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
+com\example\google\google_hackathon\service\RoomService.class
 com\example\google\google_hackathon\config\model\ChatMessage.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
 com\example\google\google_hackathon\dto\LoginRequest.class
@@ -23,7 +25,9 @@ com\example\google\google_hackathon\service\FirestoreService.class
 com\example\google\google_hackathon\config\SecurityConfig.class
 com\example\google\google_hackathon\config\WebSocketConfig.class
 com\example\google\google_hackathon\controller\QuestionController.class
+com\example\google\google_hackathon\repository\RoomRepository.class
 com\example\google\google_hackathon\service\VertexAIService.class
+com\example\google\google_hackathon\dto\RoomRequest.class
 com\example\google\google_hackathon\service\ChatMessageService.class
 com\example\google\google_hackathon\repository\AppUserRepository.class
 com\example\google\google_hackathon\config\WebSocketSecurityConfig.class
@@ -33,6 +37,7 @@ com\example\google\google_hackathon\dto\JwtResponse.class
 com\example\google\google_hackathon\config\WebConfig$1.class
 com\example\google\google_hackathon\entity\AppUser.class
 com\example\google\google_hackathon\controller\HomeController.class
+com\example\google\google_hackathon\controller\RoomController.class
 com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
 com\example\google\google_hackathon\controller\DemoController.class
