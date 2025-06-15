@@ -16,7 +16,6 @@ import com.example.google.google_hackathon.dto.RoomRequest;
 import com.example.google.google_hackathon.entity.Room;
 import com.example.google.google_hackathon.security.JwtTokenProvider;
 import com.example.google.google_hackathon.service.RoomService;
-
 @RestController
 @RequestMapping("/chat/rooms")
 public class RoomController {
@@ -36,8 +35,11 @@ public class RoomController {
 
     @PostMapping
     public Room createRoom(@RequestBody RoomRequest request, @RequestHeader("Authorization") String authHeader) {
+        System.out.println("抽出したトークン: " + authHeader);
         String token = authHeader.replace("Bearer ", "");
+        System.out.println("Authorizationヘッダー: " + authHeader);
         String username = jwtTokenProvider.getUsernameFromToken(token);
+        System.out.println("トークンから取得したユーザー名: " + username);
         return roomService.createRoom(request.getTitle(), request.getParentIndex(), username);
     }
 
