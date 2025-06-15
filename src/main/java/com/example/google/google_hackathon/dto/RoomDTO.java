@@ -15,5 +15,19 @@ public class RoomDTO {
         this.parentIndex = room.getParent() != null ? room.getParent().getIndex() : null;
     }
 
-    // getter/setter 省略可（Lombok使ってもOK）
+    public Long getId() {
+        return id;
+    }
+
+    public String getIndex() {
+        return index;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getParentIndex() {
+        return parentIndex;
+    }
 }
