@@ -40,6 +40,7 @@ com\example\google\google_hackathon\controller\HomeController.class
 com\example\google\google_hackathon\controller\RoomController.class
 com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
+com\example\google\google_hackathon\dto\RoomDTO.class
 com\example\google\google_hackathon\controller\DemoController.class
 com\example\google\google_hackathon\controller\ReminderController.class
 com\example\google\google_hackathon\entity\ChatMessageEntity.class

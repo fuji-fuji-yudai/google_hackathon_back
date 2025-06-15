@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.example.google.google_hackathon.dto.RoomDTO;
 import com.example.google.google_hackathon.dto.RoomRequest;
 import com.example.google.google_hackathon.entity.Room;
 import com.example.google.google_hackathon.security.JwtTokenProvider;
@@ -26,10 +28,10 @@ public class RoomController {
     private JwtTokenProvider jwtTokenProvider;
 
     @GetMapping
-    public List<Room> getRooms(@RequestHeader("Authorization") String authHeader) {
+    public List<RoomDTO> getRooms(@RequestHeader("Authorization") String authHeader) {
     String token = authHeader.replace("Bearer ", "");
     String username = jwtTokenProvider.getUsernameFromToken(token);
-    return roomService.getRoomsForUser(username);
+    return roomService.getRoomDTOsForUser(username);
 }
 
 
