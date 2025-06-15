@@ -28,11 +28,14 @@ public class RoomController {
     private JwtTokenProvider jwtTokenProvider;
 
     @GetMapping
-    public List<RoomDTO> getRooms(@RequestHeader("Authorization") String authHeader) {
-    String token = authHeader.replace("Bearer ", "");
-    String username = jwtTokenProvider.getUsernameFromToken(token);
-    return roomService.getRoomDTOsForUser(username);
-}
+    // public List<RoomDTO> getRooms(@RequestHeader("Authorization") String authHeader) {
+    // String token = authHeader.replace("Bearer ", "");
+    // String username = jwtTokenProvider.getUsernameFromToken(token);
+    // return roomService.getRoomDTOsForUser(username);
+    // }
+    public List<RoomDTO> getRooms(){
+        return roomService.getAllRooms();
+    }
 
 
     @PostMapping

@@ -23,12 +23,19 @@ public class RoomService {
     @Autowired
     private AppUserRepository AppUserRepository;
 
-    public List<RoomDTO> getRoomDTOsForUser(String username) {
-        AppUser user = AppUserRepository.findByUsername(username)
-                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        List<Room> rooms = roomRepository.findByOwner(user);
-        return rooms.stream().map(RoomDTO::new).collect(Collectors.toList());
+    // public List<RoomDTO> getRoomDTOsForUser(String username) {
+    //     AppUser user = AppUserRepository.findByUsername(username)
+    //                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    //     List<Room> rooms = roomRepository.findByOwner(user);
+    //     return rooms.stream().map(RoomDTO::new).collect(Collectors.toList());
+    // }
+
+    public List<RoomDTO> getAllRooms() {
+    return roomRepository.findAll().stream()
+        .map(RoomDTO::new)
+        .collect(Collectors.toList());
     }
+
 
     public Room createRoom(String title, String parentIndex, String username) {
         AppUser user = AppUserRepository.findByUsername(username)
