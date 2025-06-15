@@ -12,4 +12,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     List<Room> findAll();
 
     Room findByIndex(String index);
+
+    List<Room> findByParentIsNull();
+
+    List<Room> findByParent(Room parent);
 }

@@ -43,11 +43,17 @@ public class RoomService {
         Room room = new Room();
         room.setTitle(title);
         room.setOwner(user);
-        room.setIndex(generateIndex(parentIndex));
+        
+        Room parent = null;
         if (parentIndex != null) {
-            Room parent = roomRepository.findByIndex(parentIndex);
+            parent = roomRepository.findByIndex(parentIndex);
             room.setParent(parent);
         }
+
+
+        String newIndex = generateNextIndex(parent);
+        room.setIndex(newIndex);
+
         return roomRepository.save(room);
     }
 
@@ -55,9 +61,37 @@ public class RoomService {
         roomRepository.deleteById(id);
     }
 
-    private String generateIndex(String parentIndex) {
-        // 例: "2-1" → "2-1-3"
-        // 実装は必要に応じて
-        return UUID.randomUUID().toString(); // 仮
+    // private String generateIndex(String parentIndex) {
+    //     // 例: "2-1" → "2-1-3"
+    //     // 実装は必要に応じて
+    //     Long maxIndex = roomRepository.findMaxIndexAsLong(); 
+    //     //return UUID.randomUUID().toString(); // 仮
+    //     return String.valueOf((maxIndex != null ? maxIndex + 1 : 1));
+    // }
+
+    public String generateNextIndex(Room parent) {
+    if (parent == null) {
+        // ルートの場合：最大の index を探して +1
+        List<Room> rootRooms = roomRepository.findByParentIsNull();
+        int max = rootRooms.stream()
+            .map(Room::getIndex)
+            .filter(index -> index.matches("\\d+"))
+            .mapToInt(Integer::parseInt)
+            .max()
+            .orElse(0);
+        return String.valueOf(max + 1);
+    } else {
+        // 子の場合：親の index をベースに、同じ親を持つ子の最大末尾番号を探す
+        List<Room> siblings = roomRepository.findByParent(parent);
+        int max = siblings.stream()
+            .map(Room::getIndex)
+            .map(index -> index.replaceFirst(parent.getIndex() + "-", ""))
+            .filter(suffix -> suffix.matches("\\d+"))
+            .mapToInt(Integer::parseInt)
+            .max()
+            .orElse(0);
+        return parent.getIndex() + "-" + (max + 1);
     }
+}
+
 }
