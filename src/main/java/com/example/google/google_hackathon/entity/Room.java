@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -26,11 +27,11 @@ public class Room {
     private String title;
 
     @ManyToOne
-    @JsonManagedReference
+    @JsonBackReference
     private AppUser owner;
 
     @ManyToOne
-    @JsonManagedReference
+    @JsonBackReference
     private Room parent;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
