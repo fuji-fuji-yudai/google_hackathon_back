@@ -26,6 +26,7 @@ public class ReflectionService {
     AppUser user = appUserRepository.findByUsername(userName)
                         .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     reflectionEntity.setUserID(user.getId());
+    System.out.println(reflectionEntity.getID());
     return reflectionRepository.save(reflectionEntity);
   }
 }
