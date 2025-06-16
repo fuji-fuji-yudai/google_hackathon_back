@@ -1,5 +1,7 @@
 package com.example.google.google_hackathon.service.reflection;
 
+import java.sql.SQLException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +15,7 @@ public class ReflectionService {
   public ReflectionService(ReflectionRepository reflectionRepository) {
     this.reflectionRepository = reflectionRepository;
   }
-  public ReflectionEntity createReflection(ReflectionEntity reflectionEntity) {
+  public ReflectionEntity createReflection(ReflectionEntity reflectionEntity) throws SQLException {
     System.out.println("登録処理開始");
     return reflectionRepository.save(reflectionEntity);
   }

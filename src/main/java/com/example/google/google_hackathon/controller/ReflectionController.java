@@ -1,5 +1,7 @@
 package com.example.google.google_hackathon.controller;
 
+import java.sql.SQLException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +21,19 @@ public class ReflectionController {
   }
   @PostMapping("/create")
   public ReflectionEntity createReflection(@RequestBody ReflectionEntity reflectionEntity) {
-    return reflectionService.createReflection(reflectionEntity);
+    try {
+      System.out.println(
+        "RequestBody: {" 
+        + reflectionEntity.getUserID() + "," 
+        + reflectionEntity.getDate() + ","
+        + reflectionEntity.geActivity() + ","
+        + reflectionEntity.getAchievement() + ","
+        + reflectionEntity.getImprovementPoints() + "}");
+      return reflectionService.createReflection(reflectionEntity);
+    } catch (SQLException e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
+      return reflectionEntity;
+    }
   }
 }
