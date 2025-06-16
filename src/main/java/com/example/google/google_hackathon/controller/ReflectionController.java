@@ -21,14 +21,15 @@ public class ReflectionController {
   }
   @PostMapping("/create")
   public ReflectionEntity createReflection(@RequestBody ReflectionEntity reflectionEntity) {
+    System.out.println(
+      "RequestBody: {" 
+      + reflectionEntity.getUserID() + "," 
+      + reflectionEntity.getDate() + ","
+      + reflectionEntity.geActivity() + ","
+      + reflectionEntity.getAchievement() + ","
+      + reflectionEntity.getImprovementPoints() + "}"
+    );
     try {
-      System.out.println(
-        "RequestBody: {" 
-        + reflectionEntity.getUserID() + "," 
-        + reflectionEntity.getDate() + ","
-        + reflectionEntity.geActivity() + ","
-        + reflectionEntity.getAchievement() + ","
-        + reflectionEntity.getImprovementPoints() + "}");
       return reflectionService.createReflection(reflectionEntity);
     } catch (SQLException e) {
       System.out.println("SQLで例外が発生しました。");
