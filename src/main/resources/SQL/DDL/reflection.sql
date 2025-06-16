@@ -2,7 +2,7 @@
 
 CREATE TABLE reflection (
   id                 SERIAL         PRIMARY KEY,
-  user_id            VARCHAR(255),
+  user_id            INT,
   reflection_date    DATE,
   activity           TEXT,
   achievement        TEXT,

@@ -16,7 +16,7 @@ public class ReflectionEntity {
   @GeneratedValue(strategy = GenerationType.SEQUENCE)
   private Long id;
   @Column(nullable = false)
-  private String userID;
+  private Long userID;
   @Column(nullable = false)
   private Date date;
   @Column(nullable = false)
@@ -31,7 +31,7 @@ public class ReflectionEntity {
 
   // コンストラクタ（全セット用）
   public ReflectionEntity(
-    Long id, String userID, Date date, String activity, 
+    Long id, Long userID, Date date, String activity, 
     String achievement, String improvementPoints) {
       this.userID = userID;
       this.date = date;
@@ -44,7 +44,7 @@ public class ReflectionEntity {
     return id;
   }
   
-  public String getUserID() {
+  public Long getUserID() {
     return userID;
   }
 
@@ -68,7 +68,7 @@ public class ReflectionEntity {
     this.id = id;
   }
 
-  public void setUserID(String userID) {
+  public void setUserID(Long userID) {
     this.userID = userID;
   }
 
