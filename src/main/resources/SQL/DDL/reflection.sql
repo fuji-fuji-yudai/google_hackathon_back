@@ -1,6 +1,6 @@
 -- DROP TABLE IF EXISTS reflection;
 
-CREATE TABLE reflection (
+CREATE TABLE reflections (
   id                 SERIAL         PRIMARY KEY,
   user_id            INT,
   reflection_date    DATE,

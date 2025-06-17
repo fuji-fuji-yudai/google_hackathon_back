@@ -14,9 +14,9 @@ import jakarta.persistence.Table;
 public class ReflectionEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+  private Long Id;
   @Column(nullable = false)
-  private Long userID;
+  private Long userId;
   @Column(nullable = false)
   private Date date;
   @Column(nullable = false)
@@ -31,21 +31,21 @@ public class ReflectionEntity {
 
   // コンストラクタ（全セット用）
   public ReflectionEntity(
-    Long id, Long userID, Date date, String activity, 
+    Long Id, Long userId, Date date, String activity, 
     String achievement, String improvementPoints) {
-      this.userID = userID;
+      this.userId = userId;
       this.date = date;
       this.activity = activity;
       this.achievement = achievement;
       this.improvementPoints = improvementPoints;
   }
 
-  public Long getID() {
-    return id;
+  public Long getId() {
+    return Id;
   }
   
-  public Long getUserID() {
-    return userID;
+  public Long getUserId() {
+    return userId;
   }
 
   public Date getDate() {
@@ -64,12 +64,12 @@ public class ReflectionEntity {
     return improvementPoints;
   }
 
-  public void setID(Long id) {
-    this.id = id;
+  public void setId(Long Id) {
+    this.Id = Id;
   }
 
-  public void setUserID(Long userID) {
-    this.userID = userID;
+  public void setUserId(Long userId) {
+    this.userId = userId;
   }
 
   public void setDate(Date date) {

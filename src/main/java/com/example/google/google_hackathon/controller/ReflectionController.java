@@ -28,7 +28,7 @@ public class ReflectionController {
   public ReflectionEntity createReflection(@RequestBody ReflectionEntity reflectionEntity, @RequestHeader("Authorization") String authHeader) {
     System.out.println(
       "RequestBody: {" 
-      + reflectionEntity.getUserID() + "," 
+      + reflectionEntity.getUserId() + "," 
       + reflectionEntity.getDate() + ","
       + reflectionEntity.geActivity() + ","
       + reflectionEntity.getAchievement() + ","
