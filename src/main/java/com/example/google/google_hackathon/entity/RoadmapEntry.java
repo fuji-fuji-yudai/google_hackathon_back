@@ -1,43 +1,57 @@
 package com.example.google.google_hackathon.entity;
 
 import jakarta.persistence.*;
-import java.time.ZonedDateTime;
+import java.time.ZonedDateTime; // createdAt, updatedAt 用
 
 @Entity
 @Table(name = "roadmap_entries")
 public class RoadmapEntry {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    // ManyToOne関係でAppUserエンティティと紐付ける
+    // user_idカラムはデータベースではBIGINTだが、Java側ではAppUserオブジェクトとして扱う
+    @ManyToOne(fetch = FetchType.LAZY) // LAZYはパフォーマンスのため推奨
+    @JoinColumn(name = "user_id", nullable = false) // データベースの user_id カラムとマッピング
+    private AppUser user; // user_id に対応する AppUser オブジェクト
+
+    // AppUserオブジェクトのゲッターとセッター
+    public AppUser getUser() {
+        return user;
+    }
+
+    public void setUser(AppUser user) {
+        this.user = user;
+    }
+
+    @Column(name = "category_name", nullable = false)
     private String categoryName;
 
-    @Column(nullable = false)
-    private String taskName; // タスク名を追加
+    @Column(name = "task_name", nullable = false)
+    private String taskName;
 
-    @Column(nullable = false)
-    private String startMonth; // month を startMonth に変更
+    @Column(name = "start_month", nullable = false)
+    private String startMonth;
 
-    @Column(nullable = false)
-    private String endMonth; // 終了月を追加
+    @Column(name = "end_month", nullable = false)
+    private String endMonth;
 
-    // description フィールドを削除
-
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private ZonedDateTime updatedAt;
 
     // コンストラクタ
     public RoadmapEntry() {
+        // AppUserエンティティにcreatedAt/updatedAtがないため、
+        // ここではRoadmapEntry自身のもののみ初期化します。
         this.createdAt = ZonedDateTime.now();
         this.updatedAt = ZonedDateTime.now();
     }
 
-    // GetterとSetter
+    // 既存のゲッターとセッター (変更なし)
     public Long getId() {
         return id;
     }
@@ -54,34 +68,36 @@ public class RoadmapEntry {
         this.categoryName = categoryName;
     }
 
-    public String getTaskName() { // タスク名のGetter
+    public String getTaskName() {
         return taskName;
     }
 
-    public void setTaskName(String taskName) { // タスク名のSetter
+    public void setTaskName(String taskName) {
         this.taskName = taskName;
     }
 
-    public String getStartMonth() { // 開始月のGetter
+    public String getStartMonth() {
         return startMonth;
     }
 
-    public void setStartMonth(String startMonth) { // 開始月のSetter
+    public void setStartMonth(String startMonth) {
         this.startMonth = startMonth;
     }
 
-    public String getEndMonth() { // 終了月のGetter
+    public String getEndMonth() {
         return endMonth;
     }
 
-    public void setEndMonth(String endMonth) { // 終了月のSetter
+    public void setEndMonth(String endMonth) {
         this.endMonth = endMonth;
     }
 
-    // getDescription() と setDescription() を削除
-
     public ZonedDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(ZonedDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public ZonedDateTime getUpdatedAt() {
@@ -90,12 +106,6 @@ public class RoadmapEntry {
 
     public void setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = ZonedDateTime.now();
-        this.updatedAt = ZonedDateTime.now();
     }
 
     @PreUpdate
