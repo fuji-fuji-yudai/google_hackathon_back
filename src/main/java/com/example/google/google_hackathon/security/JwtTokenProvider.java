@@ -16,13 +16,9 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Component
 public class JwtTokenProvider {
-
-    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
     private final String jwtSecret = "a-very-long-and-secure-secret-key-that-is-at-least-64-bytes-long-1234567890!@#$%^&*()"; // 適切な長さの秘密鍵を使用してください
     private final long jwtExpirationMs = 86400000; // 1日（ミリ秒）
 
@@ -46,31 +42,41 @@ public class JwtTokenProvider {
 
     // ✅ トークンからユーザー名を取得
     public String getUsernameFromToken(String token) {
+        System.out.println("DEBUG (JwtTokenProvider): Attempting to get username from token."); // ★ここ
+        System.out.println("DEBUG (JwtTokenProvider): Token (first 50 chars): "
+                + token.substring(0, Math.min(token.length(), 50)) + "..."); // ★ここ
         try {
-            return Jwts.parserBuilder()
+            String username = Jwts.parserBuilder()
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token)
                     .getBody()
                     .getSubject();
+            System.out.println("DEBUG (JwtTokenProvider): Successfully extracted username: " + username); // ★ここ
+            return username;
         } catch (SignatureException ex) {
-            logger.error("Invalid JWT signature: {}", ex.getMessage());
+            System.err.println("ERROR (JwtTokenProvider): Invalid JWT signature: " + ex.getMessage()); // ★ここ
         } catch (MalformedJwtException ex) {
-            logger.error("Invalid JWT token: {}", ex.getMessage());
+            System.err.println("ERROR (JwtTokenProvider): Invalid JWT token: " + ex.getMessage()); // ★ここ
         } catch (ExpiredJwtException ex) {
-            logger.error("Expired JWT token: {}", ex.getMessage());
+            System.err.println("ERROR (JwtTokenProvider): Expired JWT token: " + ex.getMessage()); // ★ここ
         } catch (UnsupportedJwtException ex) {
-            logger.error("Unsupported JWT token: {}", ex.getMessage());
+            System.err.println("ERROR (JwtTokenProvider): Unsupported JWT token: " + ex.getMessage()); // ★ここ
         } catch (IllegalArgumentException ex) {
-            logger.error("JWT claims string is empty: {}", ex.getMessage());
-        } catch (Exception ex) {
-            logger.error("An unexpected error occurred while getting username from token", ex);
+            System.err.println("ERROR (JwtTokenProvider): JWT claims string is empty: " + ex.getMessage()); // ★ここ
+        } catch (Exception ex) { // 最悪の場合のために残す
+            System.err.println(
+                    "ERROR (JwtTokenProvider): An unexpected error occurred while getting username from token: "
+                            + ex.getMessage());
+            ex.printStackTrace(); // スタックトレースも出力
         }
+        System.out.println("DEBUG (JwtTokenProvider): Failed to get username from token. Returning null."); // ★ここ
         return null; // エラーが発生した場合はnullを返す
     }
 
     // ✅ トークンの有効期限をチェック
     private boolean isTokenExpired(String token) {
+        System.out.println("DEBUG (JwtTokenProvider): Checking if token is expired."); // ★ここ
         try {
             Date expiration = Jwts.parserBuilder()
                     .setSigningKey(getSigningKey())
@@ -79,32 +85,49 @@ public class JwtTokenProvider {
                     .getBody()
                     .getExpiration();
 
-            return expiration.before(new Date());
+            boolean expired = expiration.before(new Date());
+            System.out.println(
+                    "DEBUG (JwtTokenProvider): Token expiration status: " + (expired ? "EXPIRED" : "NOT EXPIRED")); // ★ここ
+            return expired;
         } catch (SignatureException ex) {
-            logger.error("Invalid JWT signature during expiration check: {}", ex.getMessage());
+            System.err.println(
+                    "ERROR (JwtTokenProvider): Invalid JWT signature during expiration check: " + ex.getMessage()); // ★ここ
         } catch (MalformedJwtException ex) {
-            logger.error("Invalid JWT token during expiration check: {}", ex.getMessage());
+            System.err
+                    .println("ERROR (JwtTokenProvider): Invalid JWT token during expiration check: " + ex.getMessage()); // ★ここ
         } catch (ExpiredJwtException ex) {
-            logger.error("Expired JWT token during expiration check, but it's still an expired token: {}",
-                    ex.getMessage());
+            System.err.println(
+                    "ERROR (JwtTokenProvider): Expired JWT token during expiration check, but it's still an expired token: "
+                            + ex.getMessage());
             return true; // 期限切れの場合はtrueを返す
         } catch (UnsupportedJwtException ex) {
-            logger.error("Unsupported JWT token during expiration check: {}", ex.getMessage());
+            System.err.println(
+                    "ERROR (JwtTokenProvider): Unsupported JWT token during expiration check: " + ex.getMessage()); // ★ここ
         } catch (IllegalArgumentException ex) {
-            logger.error("JWT claims string is empty during expiration check: {}", ex.getMessage());
+            System.err.println(
+                    "ERROR (JwtTokenProvider): JWT claims string is empty during expiration check: " + ex.getMessage()); // ★ここ
         } catch (Exception ex) {
-            logger.error("An unexpected error occurred during token expiration check", ex);
+            System.err.println("ERROR (JwtTokenProvider): An unexpected error occurred during token expiration check: "
+                    + ex.getMessage());
+            ex.printStackTrace(); // スタックトレースも出力
         }
+        System.out.println(
+                "DEBUG (JwtTokenProvider): Failed to check token expiration. Returning true (expired/invalid)."); // ★ここ
         return true; // 例外が発生した場合は、安全のため有効期限切れ（無効）と見なす
     }
 
     // ✅ トークンの検証
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token); // ここで例外はキャッチされる
+        System.out.println("DEBUG (JwtTokenProvider): Validating token for user: "
+                + (userDetails != null ? userDetails.getUsername() : "null")); // ★ここ
+        final String username = getUsernameFromToken(token);
         if (username == null) {
-            return false; // ユーザー名が取得できない（検証失敗）
+            System.out.println("DEBUG (JwtTokenProvider): Username could not be extracted. Token validation failed."); // ★ここ
+            return false;
         }
 
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        boolean tokenValid = username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        System.out.println("DEBUG (JwtTokenProvider): Final token validation result: " + tokenValid); // ★ここ
+        return tokenValid;
     }
 }
