@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.ZonedDateTime; // createdAt, updatedAt 用
 
 @Entity
-@Table(name = "roadmap_entries")
+@Table(name = "roadmap_entries", schema = "public")
 public class RoadmapEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,7 +51,8 @@ public class RoadmapEntry {
         this.updatedAt = ZonedDateTime.now();
     }
 
-    // 既存のゲッターとセッター (変更なし)
+    // ゲッターとセッター
+
     public Long getId() {
         return id;
     }
