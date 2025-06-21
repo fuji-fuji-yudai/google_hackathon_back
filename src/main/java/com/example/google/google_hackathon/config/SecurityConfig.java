@@ -43,8 +43,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()  // 追加
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((req, res, excep) -> res
-                                .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
+                        .authenticationEntryPoint((req, res, excep) -> {
+                            System.out.println("=== AuthenticationEntryPoint called ===");
+        System.out.println("Request URI: " + req.getRequestURI());
+        System.out.println("Exception: " + excep.getMessage());
+        System.out.println("Exception class: " + excep.getClass().getName());
+                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");}))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
