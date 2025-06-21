@@ -36,8 +36,10 @@ public class TaskManageController {
     public ResponseEntity<Void> updateTasks(
             @RequestBody List<TaskDto> tasks,
             @RequestHeader("Authorization") String authHeader) {
+                System.out.println("受け取った Authorization ヘッダー: " + authHeader); // ← ここ
         String token = authHeader.replace("Bearer ", "");
         if (!JwtUtil.validateToken(token)) {
+            System.out.println("JWTが無効: " + token); // ← ここ
             return ResponseEntity.status(401).build();
         }
 

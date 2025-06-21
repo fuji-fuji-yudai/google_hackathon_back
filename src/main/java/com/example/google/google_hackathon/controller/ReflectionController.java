@@ -1,12 +1,16 @@
 package com.example.google.google_hackathon.controller;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.google.google_hackathon.entity.ReflectionEntity;
@@ -20,15 +24,33 @@ public class ReflectionController {
   private JwtTokenProvider jwtTokenProvider;
 
   private final ReflectionService reflectionService;
-  @Autowired
   public ReflectionController(ReflectionService reflectionService) {
     this.reflectionService = reflectionService;
+  }
+  @GetMapping
+  public ResponseEntity<List<ReflectionEntity>> getReflections(
+        @RequestParam int year,
+        @RequestParam int month,
+        @RequestHeader("Authorization") String authHeader) {
+    System.out.println("抽出したトークン: " + authHeader);
+    String token = authHeader.replace("Bearer ", "");
+    System.out.println("Authorizationヘッダー: " + authHeader);
+    String userName = jwtTokenProvider.getUsernameFromToken(token);
+    System.out.println("トークンから取得したユーザー名: " + userName);
+    try { 
+      List<ReflectionEntity> reflections = reflectionService.getReflectionsByMonth(year, month, userName);
+      return ResponseEntity.ok(reflections);
+    } catch (SQLException e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
+      return null;
+    }
   }
   @PostMapping("/create")
   public ReflectionEntity createReflection(@RequestBody ReflectionEntity reflectionEntity, @RequestHeader("Authorization") String authHeader) {
     System.out.println(
       "RequestBody: {" 
-      + reflectionEntity.getUserID() + "," 
+      + reflectionEntity.getUserId() + "," 
       + reflectionEntity.getDate() + ","
       + reflectionEntity.geActivity() + ","
       + reflectionEntity.getAchievement() + ","

@@ -35,9 +35,11 @@ public class SimilarityService {
         for (QueryDocumentSnapshot doc : documents) {
             List<Double> embedding = (List<Double>) doc.get("embedding");
             String message = (String) doc.get("message");
+            String sender = doc.getString("sender");
+            Date timestamp = doc.getDate("timestamp");
 
             double similarity = cosineSimilarity(userEmbedding, embedding);
-            similarMessages.add(new SimilarMessage(message, similarity));
+            similarMessages.add(new SimilarMessage(message, similarity,sender,timestamp));
         }
 
         // 4. 類似度順にソートして上位を返す
@@ -60,10 +62,15 @@ public class SimilarityService {
     public static class SimilarMessage {
         private final String message;
         private final double similarity;
+        private final String sender;
+        private final Date timestamp;
 
-        public SimilarMessage(String message, double similarity) {
+
+        public SimilarMessage(String message, double similarity,String sender,Date timestamp) {
             this.message = message;
             this.similarity = similarity;
+            this.sender = sender;
+            this.timestamp = timestamp;
         }
 
         public String getMessage() {
@@ -73,5 +80,15 @@ public class SimilarityService {
         public double getSimilarity() {
             return similarity;
         }
+
+        
+        public String getSender() {
+            return sender;
+        }
+
+        public Date getTimestamp() {
+            return timestamp;
+        }
+
     }
 }

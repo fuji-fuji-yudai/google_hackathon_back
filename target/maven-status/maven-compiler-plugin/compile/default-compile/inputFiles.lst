@@ -11,6 +11,7 @@ C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\QuestionController.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\ReflectionController.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\ReminderController.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\RoadmapEntryController.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\RoomController.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\TaskManageController.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\JwtResponse.java
@@ -20,11 +21,13 @@ C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\ReminderResponse.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\RoomDTO.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\RoomRequest.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\SimilarMessageDTO.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\TaskDto.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\AppUser.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ChatMessageEntity.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ReflectionEntity.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\Reminder.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\RoadmapEntry.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\Room.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\Task.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\GoogleHackathonApplication.java
@@ -35,6 +38,7 @@ C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ChatMessageRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReflectionRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReminderRepository.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\RoadmapEntryRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\RoomRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\TaskManageRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\security\JwtAuthenticationFilter.java
@@ -46,6 +50,7 @@ C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\GeminiService.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\reflection\ReflectionService.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\ReminderService.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\RoadmapService.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\RoomService.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\SimilarityService.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\TaskService.java

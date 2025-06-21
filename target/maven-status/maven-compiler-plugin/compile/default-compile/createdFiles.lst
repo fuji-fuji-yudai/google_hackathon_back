@@ -2,12 +2,15 @@ com\example\google\google_hackathon\listener\ChatMessageListener.class
 com\example\google\google_hackathon\config\WebConfig.class
 com\example\google\google_hackathon\controller\ChatController.class
 com\example\google\google_hackathon\service\RoomService.class
+com\example\google\google_hackathon\repository\RoadmapEntryRepository.class
 com\example\google\google_hackathon\config\model\ChatMessage.class
 com\example\google\google_hackathon\service\TaskService.class
 com\example\google\google_hackathon\dto\LoginRequest.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
 com\example\google\google_hackathon\security\JwtTokenProvider.class
+com\example\google\google_hackathon\entity\RoadmapEntry.class
+com\example\google\google_hackathon\controller\RoadmapEntryController.class
 com\example\google\google_hackathon\config\SecurityConfig.class
 com\example\google\google_hackathon\controller\QuestionController.class
 com\example\google\google_hackathon\repository\TaskManageRepository.class
@@ -30,7 +33,9 @@ com\example\google\google_hackathon\service\GeminiService.class
 com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
+com\example\google\google_hackathon\dto\SimilarMessageDTO.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
+com\example\google\google_hackathon\service\RoadmapService.class
 com\example\google\google_hackathon\security\JwtAuthenticationFilter.class
 com\example\google\google_hackathon\service\CustomUserDetailsService.class
 com\example\google\google_hackathon\repository\ReminderRepository.class
