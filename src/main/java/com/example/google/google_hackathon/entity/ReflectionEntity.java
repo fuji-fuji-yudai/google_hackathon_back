@@ -52,7 +52,7 @@ public class ReflectionEntity {
     return date;
   }
 
-  public String geActivity() {
+  public String getActivity() {
     return activity;
   }
 
