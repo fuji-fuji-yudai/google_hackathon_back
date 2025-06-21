@@ -1,11 +1,13 @@
 package com.example.google.google_hackathon.service;
 
+import com.example.google.google_hackathon.dto.SimilarMessageDTO;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.gson.*;
 import org.springframework.stereotype.Service;
 //import java.io.IOException;
 import java.net.URI;
 import java.net.http.*;
+import java.text.SimpleDateFormat;
 import java.util.List;
 //import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -16,7 +18,7 @@ public class GeminiService {
 
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
-    public String generateAnswer(String userQuestion, List<String> similarMessages) {
+    public String generateAnswer(String userQuestion, List<SimilarMessageDTO> similarMessages) {
         try {
             // アクセストークン取得
             GoogleCredentials credentials = GoogleCredentials.getApplicationDefault()
@@ -27,8 +29,13 @@ public class GeminiService {
             // プロンプト構築
             StringBuilder promptBuilder = new StringBuilder();
             promptBuilder.append("以下の履歴を参考にして、質問に答えてください。\n\n");
-            for (String msg : similarMessages) {
-                promptBuilder.append("- ").append(msg).append("\n");
+            for (SimilarMessageDTO msg : similarMessages) {
+                
+                String sender = msg.sender();
+                String timestamp = msg.timestamp() != null
+                                   ? new SimpleDateFormat("yyyy-MM-dd HH:mm").format(msg.timestamp())
+                                    : "不明な時刻";
+                promptBuilder.append(String.format("- [%s %s] %s\n", timestamp, sender, msg.message()));
             }
             promptBuilder.append("\n質問: ").append(userQuestion);
 

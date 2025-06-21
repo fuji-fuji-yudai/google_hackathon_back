@@ -13,7 +13,7 @@ public class WebConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("https://my-frontimage-14467698004.asia-northeast1.run.app/") // VueのURLに合わせて
+                        .allowedOrigins("https://my-frontimage-14467698004.asia-northeast1.run.app") // VueのURLに合わせて
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true); // JWTなどの認証情報を許可
