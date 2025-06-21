@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tasks").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/tasks").authenticated()
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()  // 追加
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> res
