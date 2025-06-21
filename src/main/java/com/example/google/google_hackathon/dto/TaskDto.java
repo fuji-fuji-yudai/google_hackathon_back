@@ -1,9 +1,10 @@
 package com.example.google.google_hackathon.dto;
 import java.time.LocalDate;
+import java.util.UUID;
 
 // フロントとやり取りするためのデータ構造
 public class TaskDto {
-    public String id;
+    public UUID id;
     public String title;
     public String assignee;
     public LocalDate planStart;
