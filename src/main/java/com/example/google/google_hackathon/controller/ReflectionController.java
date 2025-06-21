@@ -4,9 +4,12 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -52,7 +55,7 @@ public class ReflectionController {
       "RequestBody: {" 
       + reflectionEntity.getUserId() + "," 
       + reflectionEntity.getDate() + ","
-      + reflectionEntity.geActivity() + ","
+      + reflectionEntity.getActivity() + ","
       + reflectionEntity.getAchievement() + ","
       + reflectionEntity.getImprovementPoints() + "}"
     );
@@ -68,5 +71,17 @@ public class ReflectionController {
       System.out.println(e.getMessage());
       return reflectionEntity;
     }
+  }
+
+  @PutMapping("/update/{id}")
+  public ResponseEntity<ReflectionEntity> updateReflection(
+          @PathVariable Long id,
+          @RequestBody ReflectionEntity reflectionEntity) {
+      try {
+          ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
+          return ResponseEntity.ok(updatedReflection);
+      } catch (Exception e) {
+          return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      }
   }
 }

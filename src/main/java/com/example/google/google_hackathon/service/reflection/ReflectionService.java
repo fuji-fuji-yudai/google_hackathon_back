@@ -25,6 +25,7 @@ public class ReflectionService {
     this.appUserRepository = appUserRepository;
   }
 
+  // 月のreflectionデータを取得するメソッド
   public List<ReflectionEntity> getReflectionsByMonth(int year, int month, String userName) throws SQLException {
     System.out.println("振り返りデータ取得処理開始");
     AppUser user = appUserRepository.findByUsername(userName)
@@ -36,6 +37,7 @@ public class ReflectionService {
     return reflectionRepository.findByUserIdAndDateBetween(user.getId(), Date.valueOf(startDate), Date.valueOf(endDate));
   }
 
+  // reflectionデータを登録するメソッド
   public ReflectionEntity createReflection(ReflectionEntity reflectionEntity, String userName) throws SQLException {
     System.out.println("登録処理開始");
     AppUser user = appUserRepository.findByUsername(userName)
@@ -43,5 +45,17 @@ public class ReflectionService {
     reflectionEntity.setUserId(user.getId());
     System.out.println("取得したユーザーID : " + reflectionEntity.getUserId());
     return reflectionRepository.save(reflectionEntity);
+  }
+
+  // reflectionデータを更新するメソッド
+  public ReflectionEntity updateReflection(Long id, ReflectionEntity reflectionEntity) {
+      ReflectionEntity existingReflection = reflectionRepository.findById(id)
+              .orElseThrow(() -> new RuntimeException("Reflection not found"));
+      // 更新する内容を設定
+      existingReflection.setDate(reflectionEntity.getDate());
+      existingReflection.setActivity(reflectionEntity.getActivity());
+      existingReflection.setAchievement(reflectionEntity.getAchievement());
+      existingReflection.setImprovementPoints(reflectionEntity.getImprovementPoints());
+      return reflectionRepository.save(existingReflection);
   }
 }
