@@ -50,7 +50,9 @@ public class ReflectionController {
     }
   }
   @PostMapping("/create")
-  public ReflectionEntity createReflection(@RequestBody ReflectionEntity reflectionEntity, @RequestHeader("Authorization") String authHeader) {
+  public ReflectionEntity createReflection(
+        @RequestBody ReflectionEntity reflectionEntity, 
+        @RequestHeader("Authorization") String authHeader) {
     System.out.println(
       "RequestBody: {" 
       + reflectionEntity.getUserId() + "," 
@@ -75,13 +77,13 @@ public class ReflectionController {
 
   @PutMapping("/update/{id}")
   public ResponseEntity<ReflectionEntity> updateReflection(
-          @PathVariable Long id,
-          @RequestBody ReflectionEntity reflectionEntity) {
-      try {
-          ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
-          return ResponseEntity.ok(updatedReflection);
-      } catch (Exception e) {
-          return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-      }
+        @PathVariable Long id,
+        @RequestBody ReflectionEntity reflectionEntity) {
+    try {
+      ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
+      return ResponseEntity.ok(updatedReflection);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
   }
 }

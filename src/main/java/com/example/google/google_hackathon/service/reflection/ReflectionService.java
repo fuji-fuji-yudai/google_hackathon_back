@@ -49,13 +49,13 @@ public class ReflectionService {
 
   // reflectionデータを更新するメソッド
   public ReflectionEntity updateReflection(Long id, ReflectionEntity reflectionEntity) {
-      ReflectionEntity existingReflection = reflectionRepository.findById(id)
-              .orElseThrow(() -> new RuntimeException("Reflection not found"));
-      // 更新する内容を設定
-      existingReflection.setDate(reflectionEntity.getDate());
-      existingReflection.setActivity(reflectionEntity.getActivity());
-      existingReflection.setAchievement(reflectionEntity.getAchievement());
-      existingReflection.setImprovementPoints(reflectionEntity.getImprovementPoints());
-      return reflectionRepository.save(existingReflection);
+    ReflectionEntity existingReflection = reflectionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Reflection not found"));
+    // 更新する内容を設定
+    existingReflection.setDate(reflectionEntity.getDate());
+    existingReflection.setActivity(reflectionEntity.getActivity());
+    existingReflection.setAchievement(reflectionEntity.getAchievement());
+    existingReflection.setImprovementPoints(reflectionEntity.getImprovementPoints());
+    return reflectionRepository.save(existingReflection);
   }
 }
