@@ -1,5 +1,7 @@
 package com.example.google.google_hackathon.controller;
 
+import java.sql.Date;
+import java.sql.Ref;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -29,6 +31,24 @@ public class ReflectionController {
   private final ReflectionService reflectionService;
   public ReflectionController(ReflectionService reflectionService) {
     this.reflectionService = reflectionService;
+  }
+  @GetMapping("/{date}")
+  public ResponseEntity<ReflectionEntity> getReflections(
+        @PathVariable Date date,
+        @RequestHeader("Authorization") String authHeader) {
+    System.out.println("抽出したトークン: " + authHeader);
+    String token = authHeader.replace("Bearer ", "");
+    System.out.println("Authorizationヘッダー: " + authHeader);
+    String userName = jwtTokenProvider.getUsernameFromToken(token);
+    System.out.println("トークンから取得したユーザー名: " + userName);
+    try { 
+      ReflectionEntity reflectionEntity = reflectionService.getReflectionsByDate(date, userName);
+      return ResponseEntity.ok(reflectionEntity);
+    } catch (SQLException e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
+      return null;
+    }
   }
   @GetMapping
   public ResponseEntity<List<ReflectionEntity>> getReflections(
