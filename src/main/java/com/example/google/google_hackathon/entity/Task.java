@@ -16,9 +16,9 @@ public class Task {
 
     private String title;
     private String assignee;
-    private LocalDate planStart;
-    private LocalDate planEnd;
-    private LocalDate actualStart;
-    private LocalDate actualEnd;
+    private LocalDate plan_start;
+    private LocalDate plan_end;
+    private LocalDate actual_start;
+    private LocalDate actual_end;
     private String status;
 }

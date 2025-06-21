@@ -35,10 +35,10 @@ public class TaskService {
         dto.id = task.getId();
         dto.title = task.getTitle();
         dto.assignee = task.getAssignee();
-        dto.planStart = task.getPlanStart();
-        dto.planEnd = task.getPlanEnd();
-        dto.actualStart = task.getActualStart();
-        dto.actualEnd = task.getActualEnd();
+        dto.plan_start = task.getPlan_start();
+        dto.plan_end = task.getPlan_end();
+        dto.actual_start = task.getActual_start();
+        dto.actual_end = task.getActual_end();
         dto.status = task.getStatus();
         return dto;
     }
@@ -55,10 +55,10 @@ public class TaskService {
 
         task.setTitle(dto.title);
         task.setAssignee(dto.assignee);
-        task.setPlanStart(dto.planStart);
-        task.setPlanEnd(dto.planEnd);
-        task.setActualStart(dto.actualStart);
-        task.setActualEnd(dto.actualEnd);
+        task.setPlan_start(dto.plan_start);
+        task.setPlan_end(dto.plan_end);
+        task.setActual_start(dto.actual_start);
+        task.setActual_end(dto.actual_end);
         task.setStatus(dto.status);
 
         return task;
