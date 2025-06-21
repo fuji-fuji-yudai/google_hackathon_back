@@ -3,7 +3,6 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
-import java.util.UUID;
 
 @Entity // JPAエンティティ（DBテーブルとマッピングされる）
 @Getter
@@ -12,7 +11,7 @@ import java.util.UUID;
 public class Task {
 
     @Id // 主キー
-    private UUID id;
+    private Long id;
 
     private String title;      // タスクのタイトル
     private String assignee;   // 担当者
