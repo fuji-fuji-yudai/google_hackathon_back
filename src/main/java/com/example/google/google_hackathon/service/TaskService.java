@@ -1,4 +1,5 @@
 package com.example.google.google_hackathon.service;
+
 import com.example.google.google_hackathon.dto.TaskDto;
 import com.example.google.google_hackathon.entity.Task;
 import com.example.google.google_hackathon.repository.TaskManageRepository;
@@ -45,7 +46,13 @@ public class TaskService {
     // DTO → Entity の変換
     private Task toEntity(TaskDto dto) {
         Task task = new Task();
-        task.setId(dto.id);
+
+        // IDがnullでない場合のみ設定
+        if (dto.id != null && dto.id > 0) {
+            task.setId(dto.id);
+        }
+        // IDがnullの場合は設定しない → PostgreSQLが自動生成
+
         task.setTitle(dto.title);
         task.setAssignee(dto.assignee);
         task.setPlanStart(dto.planStart);
@@ -53,6 +60,7 @@ public class TaskService {
         task.setActualStart(dto.actualStart);
         task.setActualEnd(dto.actualEnd);
         task.setStatus(dto.status);
+
         return task;
     }
 }
