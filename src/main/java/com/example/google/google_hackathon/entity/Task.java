@@ -7,7 +7,7 @@ import lombok.Setter;
 @Entity // JPAエンティティ（DBテーブルとマッピングされる）
 @Getter
 @Setter
-@Table(name = "tasks") // 対応するテーブル名
+@Table(name = "tasks",schema = "public") // 対応するテーブル名
 public class Task {
 
     @Id // 主キー
