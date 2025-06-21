@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.http.HttpMethod;
 
 import com.example.google.google_hackathon.security.JwtAuthenticationFilter;
 
@@ -37,6 +38,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tasks").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/tasks").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> res
