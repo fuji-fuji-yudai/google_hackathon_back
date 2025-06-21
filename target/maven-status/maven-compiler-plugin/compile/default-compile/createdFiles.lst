@@ -8,7 +8,6 @@ com\example\google\google_hackathon\dto\LoginRequest.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
 com\example\google\google_hackathon\security\JwtTokenProvider.class
-com\example\google\google_hackathon\config\CorsConfig$1.class
 com\example\google\google_hackathon\config\SecurityConfig.class
 com\example\google\google_hackathon\controller\QuestionController.class
 com\example\google\google_hackathon\repository\TaskManageRepository.class
@@ -52,6 +51,5 @@ com\example\google\google_hackathon\dto\TaskDto.class
 com\example\google\google_hackathon\controller\RoomController.class
 com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
-com\example\google\google_hackathon\config\CorsConfig.class
 com\example\google\google_hackathon\controller\ReflectionController.class
 com\example\google\google_hackathon\entity\ChatMessageEntity.class
