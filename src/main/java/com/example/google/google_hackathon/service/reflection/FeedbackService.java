@@ -65,7 +65,9 @@ public class FeedbackService {
 
     // Secret Managerからサービスアカウントキーを取得
     SecretManagerServiceClient client = SecretManagerServiceClient.create();
+    System.out.println("client : "+client);
     AccessSecretVersionResponse secretResponse = client.accessSecretVersion(SECRET_NAME);
+    System.out.println("secretResponse : "+secretResponse);
     String credentialsJson = secretResponse.getPayload().getData().toStringUtf8();
     System.out.println("credentialsJson : "+credentialsJson);
     // サービスアカウントキーを読み込んで認証情報を生成
