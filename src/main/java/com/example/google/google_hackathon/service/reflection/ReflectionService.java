@@ -100,6 +100,7 @@ public class ReflectionService {
   // reflectionデータを要約するメソッド
   public ReflectionSummaryEntity summarizeReflection(List<ReflectionEntity> reflections, String userName, String yearMonth) throws SQLException {
     try {
+      System.out.println("サマリー作成処理開始");
       // ユーザー情報の取得
       AppUser user = appUserRepository.findByUsername(userName)
                         .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -125,6 +126,7 @@ public class ReflectionService {
                       .append("達成事項: ").append(reflection.getAchievement()).append("\n")
                       .append("改善点: ").append(reflection.getImprovementPoints()).append("\n\n");
       }
+      System.out.println("プロンプト: "+promptBuilder);
 
       String prompt = promptBuilder.toString();
 

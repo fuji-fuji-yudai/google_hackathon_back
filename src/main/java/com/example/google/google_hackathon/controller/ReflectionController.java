@@ -133,12 +133,14 @@ public class ReflectionController {
       @RequestParam int year,
       @RequestParam int month,
       @RequestHeader("Authorization") String authHeader) {
+    System.out.println("サマリー作成API呼び出し");
     System.out.println("抽出したトークン: " + authHeader);
     String token = authHeader.replace("Bearer ", "");
     System.out.println("Authorizationヘッダー: " + authHeader);
     String userName = jwtTokenProvider.getUsernameFromToken(token);
     System.out.println("トークンから取得したユーザー名: " + userName);
     String yearMonth = year + "-" + month;
+    System.out.println("年月: "+yearMonth);
     try {
       List<ReflectionEntity> reflections = reflectionService.getReflectionsByMonth(year, month, userName);
       ReflectionSummaryEntity summaryEntity = reflectionService.summarizeReflection(reflections, userName, yearMonth);
