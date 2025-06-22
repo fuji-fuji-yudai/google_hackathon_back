@@ -305,10 +305,6 @@ public class ExcelAnalyzerService {
                 - parentIdは親タスクのid、最上位はnull
                 - 機能名は元データから動的に取得して使用
                 - JSONのみ出力（説明文なし）
-                - 機能名は必ずExcelデータから取得すること
-                - モックデータやサンプル名を使用してはいけない
-                - 存在しない機能のタスクを作成してはいけない
-                - 各機能タスクのタイトルは「[実際の機能名]の[フェーズ名]」の形式とする
 
                 【解析対象データ】
                 %s
@@ -362,7 +358,8 @@ public class ExcelAnalyzerService {
                                         .collect(Collectors.joining(" "));
                                 return (name.contains("画面") || name.contains("UI") || name.contains("表示")
                                         || name.contains("画") || name.contains("入力")) ? 1 : 0;
-                            }).sum();
+                            })
+                            .sum();
 
                     long processCount = rows.stream()
                             .mapToLong(row -> {
@@ -371,7 +368,8 @@ public class ExcelAnalyzerService {
                                         .collect(Collectors.joining(" "));
                                 return (name.contains("処理") || name.contains("計算") || name.contains("登録")
                                         || name.contains("更新") || name.contains("削除")) ? 1 : 0;
-                            }).sum();
+                            })
+                            .sum();
 
                     analysis.append("画面系機能: ").append(screenCount).append("個\n");
                     analysis.append("処理系機能: ").append(processCount).append("個\n");
@@ -432,6 +430,9 @@ public class ExcelAnalyzerService {
      */
     private String extractTaskJsonFromResponse(String responseBody) throws Exception {
         try {
+            logger.info("=== Vertex AI API レスポンス分析開始 ===");
+            logger.info("レスポンス全体（最初の500文字）: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
+
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonArray candidates = json.getAsJsonArray("candidates");
 
@@ -440,22 +441,33 @@ public class ExcelAnalyzerService {
                 JsonArray partsArray = content.getAsJsonArray("parts");
                 String text = partsArray.get(0).getAsJsonObject().get("text").getAsString();
 
+                logger.info("抽出されたテキスト全体: {}", text);
+
                 // JSON部分のみを抽出（より堅牢な抽出ロジック）
                 String jsonText = extractJsonFromText(text);
                 if (jsonText != null) {
-                    logger.debug("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
-                    return jsonText;
+                    logger.info("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
+
+                    // JSONの妥当性をチェック
+                    try {
+                        JsonParser.parseString(jsonText);
+                        logger.info("JSON妥当性チェック: OK");
+                        return jsonText;
+                    } catch (Exception e) {
+                        logger.error("JSONの妥当性チェック: NG - {}", e.getMessage());
+                    }
                 }
 
-                logger.warn("JSONが見つかりませんでした。レスポンス全体を返します: {}",
-                        text.substring(0, Math.min(200, text.length())) + "...");
+                logger.warn("JSONが見つかりませんでした。レスポンス全体を返します");
+                logger.warn("レスポンステキスト: {}", text);
                 return text;
             } else {
-                logger.warn("Vertex AI API returned no candidates: {}", responseBody);
+                logger.error("Vertex AI API returned no candidates: {}", responseBody);
                 throw new Exception("回答を生成できませんでした");
             }
         } catch (Exception e) {
             logger.error("Vertex AIレスポンスの解析に失敗しました", e);
+            logger.error("問題のあるレスポンス: {}", responseBody);
             throw new Exception("レスポンス解析エラー: " + e.getMessage());
         }
     }
@@ -464,6 +476,9 @@ public class ExcelAnalyzerService {
      * テキストからJSON配列を抽出する改善されたメソッド
      */
     private String extractJsonFromText(String text) {
+        logger.info("=== JSON抽出開始 ===");
+        logger.info("抽出対象テキスト: {}", text);
+
         // 複数のパターンでJSON抽出を試行
         String[] patterns = {
                 "\\[.*?\\]", // 基本的な配列パターン
@@ -471,32 +486,47 @@ public class ExcelAnalyzerService {
                 "```\\s*\\[.*?\\]\\s*```" // 一般的なコードブロック
         };
 
-        for (String pattern : patterns) {
+        for (int i = 0; i < patterns.length; i++) {
+            String pattern = patterns[i];
+            logger.debug("パターン{}を試行: {}", i + 1, pattern);
+
             java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
             java.util.regex.Matcher m = p.matcher(text);
             if (m.find()) {
                 String found = m.group();
+                logger.info("パターン{}でマッチしました: {}", i + 1, found.substring(0, Math.min(100, found.length())) + "...");
+
                 // マークダウンマーカーを除去
                 found = found.replaceAll("```json|```", "").trim();
+
                 // 簡単な妥当性チェック
                 if (found.startsWith("[") && found.endsWith("]")) {
+                    logger.info("JSON形式チェック: OK");
                     return found;
+                } else {
+                    logger.warn("JSON形式チェック: NG - '[' または ']' が見つからない");
                 }
+            } else {
+                logger.debug("パターン{}はマッチしませんでした", i + 1);
             }
         }
 
         // フォールバック: 手動で最初の [から最後の ] まで抽出
+        logger.info("フォールバック抽出を試行");
         int startIdx = text.indexOf('[');
         int endIdx = text.lastIndexOf(']');
         if (startIdx >= 0 && endIdx > startIdx) {
-            return text.substring(startIdx, endIdx + 1);
+            String extracted = text.substring(startIdx, endIdx + 1);
+            logger.info("フォールバック抽出成功: {}", extracted.substring(0, Math.min(100, extracted.length())) + "...");
+            return extracted;
         }
 
+        logger.error("全てのJSON抽出方法が失敗しました");
         return null;
     }
 
     /**
-     * モックデータ生成（改善版）
+     * モックデータ生成（完全汎用版 - 具体的な機能名を含まない）
      */
     private String generateMockTaskData() {
         LocalDate now = LocalDate.now();
@@ -526,9 +556,9 @@ public class ExcelAnalyzerService {
                   },
                   {
                     "id": 3,
-                    "title": "サンプル機能の要件定義",
-                    "assignee": "担当者A",
-                    "parentId": 1,
+                    "title": "実装フェーズ",
+                    "assignee": "開発チーム",
+                    "parentId": null,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -537,9 +567,9 @@ public class ExcelAnalyzerService {
                   },
                   {
                     "id": 4,
-                    "title": "サンプル機能の基本設計",
-                    "assignee": "担当者A",
-                    "parentId": 2,
+                    "title": "テストフェーズ",
+                    "assignee": "テスト担当",
+                    "parentId": null,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -551,10 +581,10 @@ public class ExcelAnalyzerService {
                 now.plusWeeks(1).format(DATE_FORMATTER),
                 now.plusWeeks(1).format(DATE_FORMATTER),
                 now.plusWeeks(2).format(DATE_FORMATTER),
-                now.format(DATE_FORMATTER),
-                now.plusDays(3).format(DATE_FORMATTER),
-                now.plusWeeks(1).plusDays(1).format(DATE_FORMATTER),
-                now.plusWeeks(1).plusDays(4).format(DATE_FORMATTER));
+                now.plusWeeks(2).format(DATE_FORMATTER),
+                now.plusWeeks(4).format(DATE_FORMATTER),
+                now.plusWeeks(4).format(DATE_FORMATTER),
+                now.plusWeeks(5).format(DATE_FORMATTER));
     }
 
     /**
@@ -562,11 +592,25 @@ public class ExcelAnalyzerService {
      */
     private List<TaskDto> parseTaskJson(String json) {
         try {
+            logger.info("=== JSON解析開始 ===");
+            logger.info("解析対象JSON: {}", json);
+
             Gson gson = new Gson();
             TaskDto[] taskArray = gson.fromJson(json, TaskDto[].class);
+
+            if (taskArray == null) {
+                logger.error("Gsonがnullを返しました");
+                return Collections.emptyList();
+            }
+
+            logger.info("Gsonで解析されたタスク数: {}", taskArray.length);
+
             List<TaskDto> tasks = new ArrayList<>();
 
-            for (TaskDto task : taskArray) {
+            for (int i = 0; i < taskArray.length; i++) {
+                TaskDto task = taskArray[i];
+                logger.debug("タスク{}: {}", i + 1, task.title);
+
                 // 必須フィールドの初期化
                 if (task.status == null || task.status.isEmpty()) {
                     task.status = "ToDo";
@@ -584,9 +628,12 @@ public class ExcelAnalyzerService {
                 tasks.add(task);
             }
 
+            logger.info("最終的に作成されたタスク数: {}", tasks.size());
             return tasks;
         } catch (Exception e) {
             logger.error("JSONの解析に失敗しました: {}", e.getMessage());
+            logger.error("問題のあるJSON: {}", json);
+            e.printStackTrace();
             return Collections.emptyList();
         }
     }
