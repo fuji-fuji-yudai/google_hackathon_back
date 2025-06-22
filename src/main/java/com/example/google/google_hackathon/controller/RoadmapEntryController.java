@@ -81,7 +81,6 @@ public class RoadmapEntryController {
         }
         Long currentUserId = currentUserOptional.get().getId();
 
-        // ★★★ 修正箇所1: Optionalのmap/orElseGetを使用しないロジックに変更 ★★★
         Optional<RoadmapEntry> existingEntryOptional = roadmapEntryRepository.findById(id);
 
         if (existingEntryOptional.isEmpty()) {
@@ -117,7 +116,6 @@ public class RoadmapEntryController {
         }
         Long currentUserId = currentUserOptional.get().getId();
 
-        // ★★★ 修正箇所2: Optionalのmap/orElseGetを使用しないロジックに変更 ★★★
         Optional<RoadmapEntry> entryToDeleteOptional = roadmapEntryRepository.findById(id);
 
         if (entryToDeleteOptional.isEmpty()) {

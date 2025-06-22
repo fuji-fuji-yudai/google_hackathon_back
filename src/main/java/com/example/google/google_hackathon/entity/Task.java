@@ -4,23 +4,21 @@ import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity // JPAエンティティ（DBテーブルとマッピングされる）
+@Entity
 @Getter
 @Setter
-@Table(name = "tasks") // 対応するテーブル名
+@Table(name = "tasks", schema = "public")
 public class Task {
 
-    @Id // 主キー
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // ← この行を追加
+    private Long id;
 
-    private String title;      // タスクのタイトル
-    private String assignee;   // 担当者
-    private LocalDate planStart;  // 計画開始日
-    private LocalDate planEnd;    // 計画終了日
-    private LocalDate actualStart; // 実績開始日
-    private LocalDate actualEnd;   // 実績終了日
-    private String status;     // ステータス（例：ToDo, Doing, Done）
-
-    // --- Getter / Setter 省略可能（Lombokを使うと楽） ---
-    // 必要なら @Getter @Setter をクラスにつけてもOK
+    private String title;
+    private String assignee;
+    private LocalDate plan_start;
+    private LocalDate plan_end;
+    private LocalDate actual_start;
+    private LocalDate actual_end;
+    private String status;
 }
