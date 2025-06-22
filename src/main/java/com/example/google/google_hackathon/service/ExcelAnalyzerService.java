@@ -46,7 +46,7 @@ public class ExcelAnalyzerService {
             // 1. Excelファイルを解析
             Map<String, Object> excelData = readExcelFile(file.getInputStream());
             logger.info("Excel解析完了: {} sheets", ((List<?>) excelData.get("sheets")).size());
-            logger.info("Excel生データ: {}", excelData);
+
             // 2. Vertex AI Gemini APIでタスク分割
             String taskJson = processWithVertexAI(excelData);
 
@@ -70,15 +70,34 @@ public class ExcelAnalyzerService {
         List<Map<String, Object>> sheets = new ArrayList<>();
 
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
+            logger.info("=== Excel読み込み開始 ===");
+            logger.info("シート数: {}", workbook.getNumberOfSheets());
+
             for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
                 Sheet sheet = workbook.getSheetAt(i);
+                logger.info("シート{}名: '{}'", i + 1, sheet.getSheetName());
+                logger.info("シート{}の行数: {}", i + 1, sheet.getLastRowNum() + 1);
+
                 Map<String, Object> sheetData = extractSheetData(sheet);
                 sheets.add(sheetData);
+
+                // シートデータの内容を詳細ログ
+                @SuppressWarnings("unchecked")
+                List<String> headers = (List<String>) sheetData.get("headers");
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> rows = (List<Map<String, String>>) sheetData.get("rows");
+
+                logger.info("シート{}のヘッダー: {}", i + 1, headers);
+                logger.info("シート{}のデータ行数: {}", i + 1, rows.size());
+
+                if (rows.size() > 0) {
+                    logger.info("シート{}の最初の行データ: {}", i + 1, rows.get(0));
+                }
             }
         }
 
         result.put("sheets", sheets);
-        logger.debug("Excel読み込み完了: {} sheets", sheets.size());
+        logger.info("Excel読み込み完了: {} sheets, 総データ: {}", sheets.size(), result);
         return result;
     }
 
@@ -90,59 +109,128 @@ public class ExcelAnalyzerService {
         List<Map<String, String>> rows = new ArrayList<>();
 
         sheetData.put("name", sheet.getSheetName());
+        logger.info("=== シート '{}' のデータ抽出開始 ===", sheet.getSheetName());
 
-        // ヘッダー行の取得
-        Row headerRow = sheet.getRow(0);
-        List<String> headers = new ArrayList<>();
-        if (headerRow != null) {
-            for (Cell cell : headerRow) {
-                headers.add(getCellValueAsString(cell));
+        // シートの物理的な範囲を確認
+        int firstRowNum = sheet.getFirstRowNum();
+        int lastRowNum = sheet.getLastRowNum();
+        logger.info("シートの行範囲: {} ～ {}", firstRowNum, lastRowNum);
+
+        // 全行を強制スキャン（空行も含む）
+        logger.info("=== 全行スキャン開始 ===");
+        for (int rowIndex = 0; rowIndex <= Math.max(lastRowNum, 10); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row != null) {
+                int firstCellNum = row.getFirstCellNum();
+                int lastCellNum = row.getLastCellNum();
+                logger.info("行{}: セル範囲 {} ～ {}, 物理セル数: {}",
+                        rowIndex, firstCellNum, lastCellNum, row.getPhysicalNumberOfCells());
+
+                // 各セルの内容を詳細チェック
+                for (int cellIndex = 0; cellIndex < Math.max(lastCellNum, 10); cellIndex++) {
+                    Cell cell = row.getCell(cellIndex);
+                    if (cell != null) {
+                        String cellValue = getCellValueAsString(cell);
+                        logger.info("セル[{},{}]: 型={}, 値='{}'",
+                                rowIndex, cellIndex, cell.getCellType(), cellValue);
+                    } else {
+                        logger.debug("セル[{},{}]: null", rowIndex, cellIndex);
+                    }
+                }
+            } else {
+                logger.debug("行{}: null", rowIndex);
             }
         }
 
-        // データ行の取得（空行をスキップ）
-        for (int rowNum = 1; rowNum <= sheet.getLastRowNum(); rowNum++) {
+        // ヘッダー行の取得（通常は0行目）
+        Row headerRow = sheet.getRow(0);
+        List<String> headers = new ArrayList<>();
+        if (headerRow != null) {
+            logger.info("=== ヘッダー行処理 ===");
+            logger.info("ヘッダー行のセル数: {}", headerRow.getPhysicalNumberOfCells());
+
+            // 最大20列まで強制チェック
+            for (int i = 0; i < Math.max(headerRow.getLastCellNum(), 20); i++) {
+                Cell cell = headerRow.getCell(i);
+                String headerValue = getCellValueAsString(cell);
+                logger.info("ヘッダー[{}]: '{}'", i, headerValue);
+                headers.add(headerValue);
+            }
+        } else {
+            logger.warn("ヘッダー行（行0）がnullです");
+        }
+
+        // データ行の取得（1行目以降）
+        logger.info("=== データ行処理開始 ===");
+        for (int rowNum = 1; rowNum <= lastRowNum; rowNum++) {
             Row row = sheet.getRow(rowNum);
-            if (row != null && !isRowEmpty(row)) {
-                Map<String, String> rowData = extractRowData(row, headers);
-                if (!rowData.isEmpty()) {
+            if (row != null) {
+                logger.info("データ行{}を処理中...", rowNum);
+
+                Map<String, String> rowData = new HashMap<>();
+                boolean hasData = false;
+
+                // 最大20列まで強制チェック
+                for (int i = 0; i < Math.max(row.getLastCellNum(), 20); i++) {
+                    Cell cell = row.getCell(i);
+                    String value = getCellValueAsString(cell);
+                    String header = i < headers.size() ? headers.get(i) : "Column" + i;
+
+                    if (value != null && !value.trim().isEmpty()) {
+                        hasData = true;
+                        logger.info("データ発見 - 行{}列{}: ヘッダー='{}', 値='{}'", rowNum, i, header, value);
+                    }
+
+                    if (header != null && !header.trim().isEmpty()) {
+                        rowData.put(header, value);
+                    }
+                }
+
+                if (hasData) {
                     rows.add(rowData);
+                    logger.info("行{}をデータリストに追加: {}", rowNum, rowData);
+                } else {
+                    logger.warn("行{}にはデータが見つかりませんでした", rowNum);
                 }
             }
         }
 
         sheetData.put("headers", headers);
         sheetData.put("rows", rows);
+
+        logger.info("シート '{}' 抽出完了: ヘッダー{}個, データ行{}個",
+                sheet.getSheetName(), headers.size(), rows.size());
+
         return sheetData;
     }
 
     /**
      * 行からデータを抽出
      */
-    private Map<String, String> extractRowData(Row row, List<String> headers) {
-        Map<String, String> rowData = new HashMap<>();
-        for (int cellNum = 0; cellNum < headers.size(); cellNum++) {
-            Cell cell = row.getCell(cellNum);
-            String value = getCellValueAsString(cell);
-            if (!value.trim().isEmpty()) {
-                rowData.put(headers.get(cellNum), value);
-            }
-        }
-        return rowData;
-    }
+    // private Map<String, String> extractRowData(Row row, List<String> headers) {
+    //     Map<String, String> rowData = new HashMap<>();
+    //     for (int cellNum = 0; cellNum < headers.size(); cellNum++) {
+    //         Cell cell = row.getCell(cellNum);
+    //         String value = getCellValueAsString(cell);
+    //         if (!value.trim().isEmpty()) {
+    //             rowData.put(headers.get(cellNum), value);
+    //         }
+    //     }
+    //     return rowData;
+    // }
 
-    /**
-     * 行が空かどうかをチェック
-     */
-    private boolean isRowEmpty(Row row) {
-        for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
-            Cell cell = row.getCell(cellNum);
-            if (cell != null && !getCellValueAsString(cell).trim().isEmpty()) {
-                return false;
-            }
-        }
-        return true;
-    }
+    // /**
+    //  * 行が空かどうかをチェック
+    //  */
+    // private boolean isRowEmpty(Row row) {
+    //     for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
+    //         Cell cell = row.getCell(cellNum);
+    //         if (cell != null && !getCellValueAsString(cell).trim().isEmpty()) {
+    //             return false;
+    //         }
+    //     }
+    //     return true;
+    // }
 
     /**
      * セルの値を文字列として取得
@@ -152,25 +240,45 @@ public class ExcelAnalyzerService {
             return "";
         }
 
-        switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue().trim();
-            case NUMERIC:
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    return cell.getLocalDateTimeCellValue().format(DATE_FORMATTER);
-                }
-                double numValue = cell.getNumericCellValue();
-                if (numValue == (long) numValue) {
-                    return String.valueOf((long) numValue);
-                } else {
-                    return String.valueOf(numValue);
-                }
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA:
-                return cell.getCellFormula();
-            default:
-                return "";
+        try {
+            switch (cell.getCellType()) {
+                case STRING:
+                    String stringValue = cell.getStringCellValue().trim();
+                    logger.trace("セル[{},{}] STRING: '{}'", cell.getRowIndex(), cell.getColumnIndex(), stringValue);
+                    return stringValue;
+                case NUMERIC:
+                    if (DateUtil.isCellDateFormatted(cell)) {
+                        String dateValue = cell.getLocalDateTimeCellValue().format(DATE_FORMATTER);
+                        logger.trace("セル[{},{}] DATE: '{}'", cell.getRowIndex(), cell.getColumnIndex(), dateValue);
+                        return dateValue;
+                    }
+                    double numValue = cell.getNumericCellValue();
+                    String numString;
+                    if (numValue == (long) numValue) {
+                        numString = String.valueOf((long) numValue);
+                    } else {
+                        numString = String.valueOf(numValue);
+                    }
+                    logger.trace("セル[{},{}] NUMERIC: '{}'", cell.getRowIndex(), cell.getColumnIndex(), numString);
+                    return numString;
+                case BOOLEAN:
+                    String boolValue = String.valueOf(cell.getBooleanCellValue());
+                    logger.trace("セル[{},{}] BOOLEAN: '{}'", cell.getRowIndex(), cell.getColumnIndex(), boolValue);
+                    return boolValue;
+                case FORMULA:
+                    String formulaValue = cell.getCellFormula();
+                    logger.trace("セル[{},{}] FORMULA: '{}'", cell.getRowIndex(), cell.getColumnIndex(), formulaValue);
+                    return formulaValue;
+                case BLANK:
+                    logger.trace("セル[{},{}] BLANK", cell.getRowIndex(), cell.getColumnIndex());
+                    return "";
+                default:
+                    logger.trace("セル[{},{}] OTHER: ''", cell.getRowIndex(), cell.getColumnIndex());
+                    return "";
+            }
+        } catch (Exception e) {
+            logger.warn("セル[{},{}]の読み込みでエラー: {}", cell.getRowIndex(), cell.getColumnIndex(), e.getMessage());
+            return "";
         }
     }
 
@@ -227,6 +335,12 @@ public class ExcelAnalyzerService {
         String excelDataJson = gson.toJson(excelData);
         LocalDate startDate = LocalDate.now();
 
+        // Excelデータが有効かチェック
+        if (!isValidExcelData(excelData)) {
+            logger.warn("Excelデータが空または無効です。基本的なWBS生成を試行します。");
+            return buildBasicWBSPrompt();
+        }
+
         // Excelデータの特性を事前分析
         String functionalAnalysis = analyzeFunctionalCharacteristics(excelData);
 
@@ -267,10 +381,8 @@ public class ExcelAnalyzerService {
                 - 並行実装可能な機能 → 異なる担当者に分散
                 - 担当者: PM、担当者A、担当者B、担当者C、テスト担当
 
-                【出力要件】
-                以下のJSON配列形式で出力してください（前後の説明文は不要）：
+                【重要】以下のJSON配列形式のみを出力してください（前後の説明文は不要）：
 
-                ```json
                 [
                   {
                     "id": 1,
@@ -295,7 +407,6 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   }
                 ]
-                ```
 
                 【重要な制約】
                 - IDは1から連番で設定
@@ -316,6 +427,110 @@ public class ExcelAnalyzerService {
                 startDate.plusDays(3).format(DATE_FORMATTER),
                 startDate.format(DATE_FORMATTER),
                 excelDataJson);
+    }
+
+    /**
+     * Excelデータが有効かチェック
+     */
+    private boolean isValidExcelData(Map<String, Object> excelData) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> sheets = (List<Map<String, Object>>) excelData.get("sheets");
+
+            if (sheets == null || sheets.isEmpty()) {
+                logger.warn("シートが見つかりません");
+                return false;
+            }
+
+            for (Map<String, Object> sheet : sheets) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> rows = (List<Map<String, String>>) sheet.get("rows");
+
+                if (rows != null && !rows.isEmpty()) {
+                    logger.info("有効なデータ行が{}個見つかりました", rows.size());
+                    return true; // 少なくとも1つのシートにデータがあれば有効
+                }
+            }
+
+            logger.warn("すべてのシートでデータ行が見つかりません");
+            return false;
+        } catch (Exception e) {
+            logger.error("Excelデータの妥当性チェック中にエラー: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 基本的なWBSプロンプト（Excelデータが無効な場合の代替）
+     */
+    private String buildBasicWBSPrompt() {
+        LocalDate startDate = LocalDate.now();
+
+        return String.format("""
+                Excelデータが読み込めなかったため、標準的なソフトウェア開発WBSを生成してください。
+
+                以下のJSON配列形式で、基本的な開発フェーズのWBSを出力してください：
+
+                [
+                  {
+                    "id": 1,
+                    "title": "要件定義フェーズ",
+                    "assignee": "PM",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 2,
+                    "title": "基本設計フェーズ",
+                    "assignee": "設計担当",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 3,
+                    "title": "実装フェーズ",
+                    "assignee": "開発担当",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 4,
+                    "title": "テストフェーズ",
+                    "assignee": "テスト担当",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  }
+                ]
+
+                【制約】
+                - JSONのみ出力（説明文なし）
+                - 日付はyyyy-MM-dd形式
+                - statusは"ToDo"固定
+                """,
+                startDate.format(DATE_FORMATTER),
+                startDate.plusWeeks(1).format(DATE_FORMATTER),
+                startDate.plusWeeks(1).format(DATE_FORMATTER),
+                startDate.plusWeeks(2).format(DATE_FORMATTER),
+                startDate.plusWeeks(2).format(DATE_FORMATTER),
+                startDate.plusWeeks(4).format(DATE_FORMATTER),
+                startDate.plusWeeks(4).format(DATE_FORMATTER),
+                startDate.plusWeeks(5).format(DATE_FORMATTER));
     }
 
     /**
@@ -595,12 +810,26 @@ public class ExcelAnalyzerService {
             logger.info("=== JSON解析開始 ===");
             logger.info("解析対象JSON: {}", json);
 
+            // 空文字列やnullのチェック
+            if (json == null || json.trim().isEmpty()) {
+                logger.warn("JSONが空です。モックデータを返します。");
+                return parseTaskJson(generateMockTaskData());
+            }
+
+            // JSON配列の形式かチェック
+            String trimmedJson = json.trim();
+            if (!trimmedJson.startsWith("[") || !trimmedJson.endsWith("]")) {
+                logger.warn("JSONが配列形式ではありません。内容: {}", trimmedJson);
+                logger.warn("Vertex AIがJSON以外の応答を返しました。モックデータを返します。");
+                return parseTaskJson(generateMockTaskData());
+            }
+
             Gson gson = new Gson();
-            TaskDto[] taskArray = gson.fromJson(json, TaskDto[].class);
+            TaskDto[] taskArray = gson.fromJson(trimmedJson, TaskDto[].class);
 
             if (taskArray == null) {
                 logger.error("Gsonがnullを返しました");
-                return Collections.emptyList();
+                return parseTaskJson(generateMockTaskData());
             }
 
             logger.info("Gsonで解析されたタスク数: {}", taskArray.length);
@@ -633,8 +862,15 @@ public class ExcelAnalyzerService {
         } catch (Exception e) {
             logger.error("JSONの解析に失敗しました: {}", e.getMessage());
             logger.error("問題のあるJSON: {}", json);
-            e.printStackTrace();
-            return Collections.emptyList();
+            logger.warn("解析に失敗したため、モックデータを返します");
+
+            // 解析に失敗した場合はモックデータを返す
+            try {
+                return parseTaskJson(generateMockTaskData());
+            } catch (Exception mockError) {
+                logger.error("モックデータの生成にも失敗しました: {}", mockError.getMessage());
+                return Collections.emptyList();
+            }
         }
     }
 
