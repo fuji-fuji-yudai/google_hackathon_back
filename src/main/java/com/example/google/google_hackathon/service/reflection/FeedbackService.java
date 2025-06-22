@@ -64,7 +64,7 @@ public class FeedbackService {
 
       // Reflectionデータをプロンプトとして構築
       String prompt = String.format(
-        "以下のReflectionデータに基づいて、次回の活動に役立つ具体的なフィードバックを生成してください。\n\n" +
+        "以下の振り返りに基づいて、次回の活動に役立つ具体的なフィードバックを生成してください。\n\n" +
         "活動内容: %s\n達成事項: %s\n改善点: %s",
         reflectionEntity.getActivity(),
         reflectionEntity.getAchievement(),
