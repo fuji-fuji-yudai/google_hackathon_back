@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.google.google_hackathon.entity.ReflectionEntity;
+import com.example.google.google_hackathon.entity.ReflectionSummaryEntity;
 import com.example.google.google_hackathon.security.JwtTokenProvider;
 import com.example.google.google_hackathon.service.reflection.ReflectionService;
 
@@ -103,6 +104,28 @@ public class ReflectionController {
       ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
       return ResponseEntity.ok(updatedReflection);
     } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+  }
+
+  @PostMapping("/summarize")
+  public ResponseEntity<ReflectionSummaryEntity> summarizeReflection(
+      @RequestParam int year,
+      @RequestParam int month,
+      @RequestHeader("Authorization") String authHeader) {
+    System.out.println("抽出したトークン: " + authHeader);
+    String token = authHeader.replace("Bearer ", "");
+    System.out.println("Authorizationヘッダー: " + authHeader);
+    String userName = jwtTokenProvider.getUsernameFromToken(token);
+    System.out.println("トークンから取得したユーザー名: " + userName);
+    String yearMonth = year + "-" + month;
+    try {
+      List<ReflectionEntity> reflections = reflectionService.getReflectionsByMonth(year, month, userName);
+      ReflectionSummaryEntity summaryEntity = reflectionService.summarizeReflection(reflections, userName, yearMonth);
+      return ResponseEntity.ok(summaryEntity);
+    } catch (SQLException e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
   }
