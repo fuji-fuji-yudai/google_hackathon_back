@@ -33,6 +33,7 @@ com\example\google\google_hackathon\service\GeminiService.class
 com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
+com\example\google\google_hackathon\dto\SimilarMessageDTO.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
 com\example\google\google_hackathon\service\RoadmapService.class
 com\example\google\google_hackathon\security\JwtAuthenticationFilter.class
