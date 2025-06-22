@@ -62,35 +62,40 @@ public class FeedbackService {
         "prompt", "以下のReflectionデータに基づいて、次回の活動に役立つ具体的なアドバイスを提供してください: \n" + reflectionData
       ))
     );
+    try {
+      // Secret Managerからサービスアカウントキーを取得
+      SecretManagerServiceClient client = SecretManagerServiceClient.create();
+      System.out.println("client : "+client);
+      AccessSecretVersionResponse secretResponse = client.accessSecretVersion(SECRET_NAME);
+      System.out.println("secretResponse : "+secretResponse);
+      String credentialsJson = secretResponse.getPayload().getData().toStringUtf8();
+      System.out.println("credentialsJson : "+credentialsJson);
+      // サービスアカウントキーを読み込んで認証情報を生成
+      GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(credentialsJson.getBytes()));
+      credentials.refreshIfExpired();
+      // HTTPヘッダーを設定
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      headers.setBearerAuth(credentials.getAccessToken().getTokenValue());
 
-    // Secret Managerからサービスアカウントキーを取得
-    SecretManagerServiceClient client = SecretManagerServiceClient.create();
-    System.out.println("client : "+client);
-    AccessSecretVersionResponse secretResponse = client.accessSecretVersion(SECRET_NAME);
-    System.out.println("secretResponse : "+secretResponse);
-    String credentialsJson = secretResponse.getPayload().getData().toStringUtf8();
-    System.out.println("credentialsJson : "+credentialsJson);
-    // サービスアカウントキーを読み込んで認証情報を生成
-    GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(credentialsJson.getBytes()));
-    credentials.refreshIfExpired();
-    // HTTPヘッダーを設定
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(credentials.getAccessToken().getTokenValue());
+      // HTTPリクエストを送信
+      RestTemplate restTemplate = new RestTemplate();
+      HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+      ResponseEntity<Map> response = restTemplate.postForEntity(GEMINI_API_URL, entity, Map.class);
 
-    // HTTPリクエストを送信
-    RestTemplate restTemplate = new RestTemplate();
-    HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-    ResponseEntity<Map> response = restTemplate.postForEntity(GEMINI_API_URL, entity, Map.class);
-
-    // フィードバックを取得して返却
-    List<Map<String, String>> predictions = (List<Map<String, String>>) response.getBody().get("predictions");
-    String generatedFeedback = predictions.get(0).get("content");
-    System.out.println("生成したフィードバック : "+generatedFeedback);
-    
-    // DBにフィードバックを保存
-    FeedbackEntity feedbackEntity = new FeedbackEntity(reflectionEntity.getId(), generatedFeedback, LocalDateTime.now());
-    feedbackRepository.save(feedbackEntity);
-    return feedbackEntity;
+      // フィードバックを取得して返却
+      List<Map<String, String>> predictions = (List<Map<String, String>>) response.getBody().get("predictions");
+      String generatedFeedback = predictions.get(0).get("content");
+      System.out.println("生成したフィードバック : "+generatedFeedback);
+      
+      // DBにフィードバックを保存
+      FeedbackEntity feedbackEntity = new FeedbackEntity(reflectionEntity.getId(), generatedFeedback, LocalDateTime.now());
+      feedbackRepository.save(feedbackEntity);
+      return feedbackEntity;
+    } catch (Exception e) {
+      System.err.println("Secret Managerからのシークレット取得中にエラー発生: " + e.getMessage());
+      e.printStackTrace();
+      return null;
+    }
   }
 }
