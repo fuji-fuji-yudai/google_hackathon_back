@@ -46,14 +46,14 @@ public class ExcelAnalyzerService {
             // 1. Excelファイルを解析
             Map<String, Object> excelData = readExcelFile(file.getInputStream());
             logger.info("Excel解析完了: {} sheets", ((List<?>) excelData.get("sheets")).size());
-            
+
             // 2. Vertex AI Gemini APIでタスク分割
             String taskJson = processWithVertexAI(excelData);
-            
+
             // 3. JSONをTaskDtoのリストに変換
             List<TaskDto> tasks = parseTaskJson(taskJson);
             logger.info("生成されたタスク数: {}", tasks.size());
-            
+
             return tasks;
         } catch (Exception e) {
             logger.error("Excel解析中にエラーが発生しました", e);
@@ -68,7 +68,7 @@ public class ExcelAnalyzerService {
     private Map<String, Object> readExcelFile(InputStream inputStream) throws IOException {
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> sheets = new ArrayList<>();
-        
+
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
                 Sheet sheet = workbook.getSheetAt(i);
@@ -181,30 +181,30 @@ public class ExcelAnalyzerService {
         try {
             // Google Cloud認証
             GoogleCredentials credentials = GoogleCredentials.getApplicationDefault()
-                .createScoped("https://www.googleapis.com/auth/cloud-platform");
+                    .createScoped("https://www.googleapis.com/auth/cloud-platform");
             credentials.refreshIfExpired();
             String accessToken = credentials.getAccessToken().getTokenValue();
 
-            // プロンプト構築
-            String prompt = buildWBSPrompt(excelData);
+            // プロンプト構築（改善された汎用的プロンプト）
+            String prompt = buildAdvancedWBSPrompt(excelData);
 
             // リクエストボディ構築
             JsonObject requestBody = createVertexAIRequest(prompt);
 
             // API呼び出し
             String endpoint = String.format(
-                "https://us-central1-aiplatform.googleapis.com/v1/projects/%s/locations/us-central1/publishers/google/models/gemini-2.0-flash-001:generateContent",
-                projectId
-            );
+                    "https://us-central1-aiplatform.googleapis.com/v1/projects/%s/locations/us-central1/publishers/google/models/gemini-2.0-flash-001:generateContent",
+                    projectId);
 
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint))
-                .header("Authorization", "Bearer " + accessToken)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .build();
+                    .uri(URI.create(endpoint))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
+                    .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = HttpClient.newHttpClient().send(request,
+                    HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
                 logger.error("Vertex AI API error: {} - {}", response.statusCode(), response.body());
@@ -220,45 +220,182 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * WBS生成用プロンプトを構築
+     * 高度なWBS生成プロンプトを構築（汎用的・柔軟性重視）
      */
-    private String buildWBSPrompt(Map<String, Object> excelData) {
+    private String buildAdvancedWBSPrompt(Map<String, Object> excelData) {
         Gson gson = new Gson();
         String excelDataJson = gson.toJson(excelData);
+        LocalDate startDate = LocalDate.now();
 
-        return "あなたはプロジェクト管理のエキスパートです。" +
-                "与えられたExcelの機能一覧から、実用的なWBS（Work Breakdown Structure）タスクを自動作成してください。\n\n" +
-                
-                "【作成ルール】\n" +
-                "1. 標準的な開発フェーズを含める：要件定義、設計、実装、テスト、リリース\n" +
-                "2. 各機能を適切なフェーズに振り分ける\n" +
-                "3. 大きな機能は複数のサブタスクに分割する\n" +
-                "4. 親子関係を正しく設定する（parentIdは親タスクのid）\n" +
-                "5. 現実的な作業期間を設定する（今日から開始）\n\n" +
-                
-                "【重要】以下のJSON配列形式のみを出力してください（前後の説明は不要）：\n" +
-                "[\n" +
-                "  {\n" +
-                "    \"id\": 1,\n" +
-                "    \"title\": \"要件定義フェーズ\",\n" +
-                "    \"assignee\": \"PM\",\n" +
-                "    \"parentId\": null,\n" +
-                "    \"plan_start\": \"" + LocalDate.now().format(DATE_FORMATTER) + "\",\n" +
-                "    \"plan_end\": \"" + LocalDate.now().plusWeeks(1).format(DATE_FORMATTER) + "\",\n" +
-                "    \"actual_start\": \"\",\n" +
-                "    \"actual_end\": \"\",\n" +
-                "    \"status\": \"ToDo\"\n" +
-                "  }\n" +
-                "]\n\n" +
-                
-                "【制約】\n" +
-                "- IDは1から連番\n" +
-                "- 親タスクのIDは子タスクより小さくする\n" +
-                "- 日付はyyyy-MM-dd形式\n" +
-                "- statusは\"ToDo\"固定\n" +
-                "- JSONのみ出力（説明文なし）\n\n" +
-                
-                "解析対象のExcelデータ：\n" + excelDataJson;
+        // Excelデータの特性を事前分析
+        String functionalAnalysis = analyzeFunctionalCharacteristics(excelData);
+
+        return String.format("""
+                あなたはプロジェクト管理とソフトウェア開発のエキスパートです。
+                提供されたExcelファイルの機能一覧を分析し、各機能の特性に基づいた最適なWBSを生成してください。
+
+                【分析されたExcelの特性】
+                %s
+
+                【WBS生成の戦略的原則】
+                1. **機能の依存関係分析**: 機能間の論理的依存関係を特定
+                2. **リスク評価**: 難易度と複雑さからリスクレベルを評価
+                3. **リソース最適化**: 担当者のスキルと負荷を考慮した配置
+                4. **品質保証**: 各フェーズでの品質チェックポイント設定
+
+                【標準開発フェーズの適用】
+                以下のフェーズ構造に沿ってタスクを生成してください：
+                - 要件定義フェーズ（各機能の要件を明確化）
+                - 基本設計フェーズ（システム全体のアーキテクチャ設計）
+                - 詳細設計フェーズ（個別機能の詳細仕様）
+                - 実装フェーズ（コーディングと単体テスト）
+                - 結合テストフェーズ（機能間の連携テスト）
+                - システムテストフェーズ（全体統合テスト）
+                - リリース準備フェーズ（本番環境への展開準備）
+
+                【動的期間設定ルール】
+                - 難易度「小」: 1-3日間
+                - 難易度「中」: 3-7日間
+                - 難易度「大」: 7-14日間
+                - 画面系機能: UI設計に+1-2日
+                - データ処理系: データ設計に+2-3日
+                - フェーズ間バッファ: 各フェーズ終了後1-2日の調整期間
+
+                【担当者割り当て戦略】
+                - 複雑な機能（難易度「大」）→ 経験豊富な担当者
+                - 関連性の高い機能 → 同一担当者にグルーピング
+                - 並行実装可能な機能 → 異なる担当者に分散
+                - 担当者: PM、担当者A、担当者B、担当者C、テスト担当
+
+                【出力要件】
+                以下のJSON配列形式で出力してください（前後の説明文は不要）：
+
+                ```json
+                [
+                  {
+                    "id": 1,
+                    "title": "要件定義フェーズ",
+                    "assignee": "PM",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 2,
+                    "title": "[Excelで見つかった機能名]の要件定義",
+                    "assignee": "担当者A",
+                    "parentId": 1,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  }
+                ]
+                ```
+
+                【重要な制約】
+                - IDは1から連番で設定
+                - 親タスクのIDは子タスクより小さくする
+                - 日付はyyyy-MM-dd形式（%s から開始）
+                - statusは"ToDo"固定
+                - parentIdは親タスクのid、最上位はnull
+                - 機能名は元データから動的に取得して使用
+                - JSONのみ出力（説明文なし）
+                - 機能名は必ずExcelデータから取得すること
+                - モックデータやサンプル名を使用してはいけない
+                - 存在しない機能のタスクを作成してはいけない
+                - 各機能タスクのタイトルは「[実際の機能名]の[フェーズ名]」の形式とする
+
+                【解析対象データ】
+                %s
+                """,
+                functionalAnalysis,
+                startDate.format(DATE_FORMATTER),
+                startDate.plusWeeks(1).format(DATE_FORMATTER),
+                startDate.format(DATE_FORMATTER),
+                startDate.plusDays(3).format(DATE_FORMATTER),
+                startDate.format(DATE_FORMATTER),
+                excelDataJson);
+    }
+
+    /**
+     * Excelデータから機能特性を分析
+     */
+    private String analyzeFunctionalCharacteristics(Map<String, Object> excelData) {
+        StringBuilder analysis = new StringBuilder();
+
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> sheets = (List<Map<String, Object>>) excelData.get("sheets");
+
+            if (sheets != null && !sheets.isEmpty()) {
+                Map<String, Object> sheet = sheets.get(0);
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> rows = (List<Map<String, String>>) sheet.get("rows");
+
+                if (rows != null && !rows.isEmpty()) {
+                    analysis.append("機能数: ").append(rows.size()).append("個\n");
+
+                    // 難易度分析
+                    Map<String, Long> difficultyCount = rows.stream()
+                            .filter(row -> row.containsKey("難易度"))
+                            .collect(Collectors.groupingBy(
+                                    row -> row.getOrDefault("難易度", "不明"),
+                                    Collectors.counting()));
+
+                    if (!difficultyCount.isEmpty()) {
+                        analysis.append("難易度分布: ");
+                        difficultyCount
+                                .forEach((key, value) -> analysis.append(key).append("(").append(value).append("個) "));
+                        analysis.append("\n");
+                    }
+
+                    // 機能タイプ分析
+                    long screenCount = rows.stream()
+                            .mapToLong(row -> {
+                                String name = row.values().stream()
+                                        .filter(Objects::nonNull)
+                                        .collect(Collectors.joining(" "));
+                                return (name.contains("画面") || name.contains("UI") || name.contains("表示")
+                                        || name.contains("画") || name.contains("入力")) ? 1 : 0;
+                            }).sum();
+
+                    long processCount = rows.stream()
+                            .mapToLong(row -> {
+                                String name = row.values().stream()
+                                        .filter(Objects::nonNull)
+                                        .collect(Collectors.joining(" "));
+                                return (name.contains("処理") || name.contains("計算") || name.contains("登録")
+                                        || name.contains("更新") || name.contains("削除")) ? 1 : 0;
+                            }).sum();
+
+                    analysis.append("画面系機能: ").append(screenCount).append("個\n");
+                    analysis.append("処理系機能: ").append(processCount).append("個\n");
+                    analysis.append("その他機能: ").append(rows.size() - screenCount - processCount).append("個\n");
+
+                    // プロジェクト複雑度の推定
+                    double complexityScore = rows.size() * 0.3;
+                    if (difficultyCount.getOrDefault("大", 0L) > 0) {
+                        complexityScore += difficultyCount.get("大") * 2.0;
+                    }
+                    if (difficultyCount.getOrDefault("中", 0L) > 0) {
+                        complexityScore += difficultyCount.get("中") * 1.0;
+                    }
+
+                    String complexityLevel = complexityScore > 10 ? "高" : complexityScore > 5 ? "中" : "低";
+                    analysis.append("プロジェクト複雑度: ").append(complexityLevel).append("\n");
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("機能特性の分析中に軽微なエラーが発生しました: {}", e.getMessage());
+            analysis.append("基本的な機能一覧として分析します\n");
+        }
+
+        return analysis.toString();
     }
 
     /**
@@ -279,11 +416,11 @@ public class ExcelAnalyzerService {
 
         requestBody.add("contents", contents);
 
-        // 生成設定（JSON出力を促進）
+        // 生成設定（JSON出力を促進、より確実性を高める）
         JsonObject generationConfig = new JsonObject();
-        generationConfig.addProperty("temperature", 0.1);
-        generationConfig.addProperty("topK", 1);
-        generationConfig.addProperty("topP", 0.8);
+        generationConfig.addProperty("temperature", 0.1); // 一貫性重視
+        generationConfig.addProperty("topK", 1); // 最も確率の高い選択
+        generationConfig.addProperty("topP", 0.8); // 高品質な出力
         generationConfig.addProperty("maxOutputTokens", 8192);
         requestBody.add("generationConfig", generationConfig);
 
@@ -302,17 +439,16 @@ public class ExcelAnalyzerService {
                 JsonObject content = candidates.get(0).getAsJsonObject().getAsJsonObject("content");
                 JsonArray partsArray = content.getAsJsonArray("parts");
                 String text = partsArray.get(0).getAsJsonObject().get("text").getAsString();
-                
-                // JSON部分のみを抽出
-                int startIdx = text.indexOf('[');
-                int endIdx = text.lastIndexOf(']') + 1;
-                if (startIdx >= 0 && endIdx > startIdx) {
-                    String jsonText = text.substring(startIdx, endIdx);
-                    logger.debug("抽出されたJSON: {}", jsonText);
+
+                // JSON部分のみを抽出（より堅牢な抽出ロジック）
+                String jsonText = extractJsonFromText(text);
+                if (jsonText != null) {
+                    logger.debug("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
                     return jsonText;
                 }
-                
-                logger.warn("JSONが見つかりませんでした。レスポンス全体: {}", text);
+
+                logger.warn("JSONが見つかりませんでした。レスポンス全体を返します: {}",
+                        text.substring(0, Math.min(200, text.length())) + "...");
                 return text;
             } else {
                 logger.warn("Vertex AI API returned no candidates: {}", responseBody);
@@ -325,56 +461,100 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * モックデータ生成
+     * テキストからJSON配列を抽出する改善されたメソッド
+     */
+    private String extractJsonFromText(String text) {
+        // 複数のパターンでJSON抽出を試行
+        String[] patterns = {
+                "\\[.*?\\]", // 基本的な配列パターン
+                "```json\\s*\\[.*?\\]\\s*```", // マークダウンコードブロック
+                "```\\s*\\[.*?\\]\\s*```" // 一般的なコードブロック
+        };
+
+        for (String pattern : patterns) {
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher m = p.matcher(text);
+            if (m.find()) {
+                String found = m.group();
+                // マークダウンマーカーを除去
+                found = found.replaceAll("```json|```", "").trim();
+                // 簡単な妥当性チェック
+                if (found.startsWith("[") && found.endsWith("]")) {
+                    return found;
+                }
+            }
+        }
+
+        // フォールバック: 手動で最初の [から最後の ] まで抽出
+        int startIdx = text.indexOf('[');
+        int endIdx = text.lastIndexOf(']');
+        if (startIdx >= 0 && endIdx > startIdx) {
+            return text.substring(startIdx, endIdx + 1);
+        }
+
+        return null;
+    }
+
+    /**
+     * モックデータ生成（改善版）
      */
     private String generateMockTaskData() {
         LocalDate now = LocalDate.now();
-        return "[\n" +
-                "  {\n" +
-                "    \"id\": 1,\n" +
-                "    \"title\": \"要件定義フェーズ\",\n" +
-                "    \"assignee\": \"PM\",\n" +
-                "    \"parentId\": null,\n" +
-                "    \"plan_start\": \"" + now.format(DATE_FORMATTER) + "\",\n" +
-                "    \"plan_end\": \"" + now.plusWeeks(1).format(DATE_FORMATTER) + "\",\n" +
-                "    \"actual_start\": \"\",\n" +
-                "    \"actual_end\": \"\",\n" +
-                "    \"status\": \"ToDo\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": 2,\n" +
-                "    \"title\": \"基本設計フェーズ\",\n" +
-                "    \"assignee\": \"設計担当\",\n" +
-                "    \"parentId\": null,\n" +
-                "    \"plan_start\": \"" + now.plusWeeks(1).format(DATE_FORMATTER) + "\",\n" +
-                "    \"plan_end\": \"" + now.plusWeeks(2).format(DATE_FORMATTER) + "\",\n" +
-                "    \"actual_start\": \"\",\n" +
-                "    \"actual_end\": \"\",\n" +
-                "    \"status\": \"ToDo\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": 3,\n" +
-                "    \"title\": \"ユーザー管理機能の要件定義\",\n" +
-                "    \"assignee\": \"担当者A\",\n" +
-                "    \"parentId\": 1,\n" +
-                "    \"plan_start\": \"" + now.format(DATE_FORMATTER) + "\",\n" +
-                "    \"plan_end\": \"" + now.plusDays(3).format(DATE_FORMATTER) + "\",\n" +
-                "    \"actual_start\": \"\",\n" +
-                "    \"actual_end\": \"\",\n" +
-                "    \"status\": \"ToDo\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": 4,\n" +
-                "    \"title\": \"ログイン機能の要件定義\",\n" +
-                "    \"assignee\": \"担当者B\",\n" +
-                "    \"parentId\": 1,\n" +
-                "    \"plan_start\": \"" + now.plusDays(3).format(DATE_FORMATTER) + "\",\n" +
-                "    \"plan_end\": \"" + now.plusWeeks(1).format(DATE_FORMATTER) + "\",\n" +
-                "    \"actual_start\": \"\",\n" +
-                "    \"actual_end\": \"\",\n" +
-                "    \"status\": \"ToDo\"\n" +
-                "  }\n" +
-                "]";
+        return String.format("""
+                [
+                  {
+                    "id": 1,
+                    "title": "要件定義フェーズ",
+                    "assignee": "PM",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 2,
+                    "title": "基本設計フェーズ",
+                    "assignee": "PM",
+                    "parentId": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 3,
+                    "title": "サンプル機能の要件定義",
+                    "assignee": "担当者A",
+                    "parentId": 1,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "id": 4,
+                    "title": "サンプル機能の基本設計",
+                    "assignee": "担当者A",
+                    "parentId": 2,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  }
+                ]""",
+                now.format(DATE_FORMATTER),
+                now.plusWeeks(1).format(DATE_FORMATTER),
+                now.plusWeeks(1).format(DATE_FORMATTER),
+                now.plusWeeks(2).format(DATE_FORMATTER),
+                now.format(DATE_FORMATTER),
+                now.plusDays(3).format(DATE_FORMATTER),
+                now.plusWeeks(1).plusDays(1).format(DATE_FORMATTER),
+                now.plusWeeks(1).plusDays(4).format(DATE_FORMATTER));
     }
 
     /**
@@ -445,14 +625,10 @@ public class ExcelAnalyzerService {
         dto.id = entity.getId();
         dto.title = entity.getTitle();
         dto.assignee = entity.getAssignee();
-        dto.plan_start = entity.getPlan_start() != null ? 
-            entity.getPlan_start().format(DATE_FORMATTER) : "";
-        dto.plan_end = entity.getPlan_end() != null ? 
-            entity.getPlan_end().format(DATE_FORMATTER) : "";
-        dto.actual_start = entity.getActual_start() != null ? 
-            entity.getActual_start().format(DATE_FORMATTER) : "";
-        dto.actual_end = entity.getActual_end() != null ? 
-            entity.getActual_end().format(DATE_FORMATTER) : "";
+        dto.plan_start = entity.getPlan_start() != null ? entity.getPlan_start().format(DATE_FORMATTER) : "";
+        dto.plan_end = entity.getPlan_end() != null ? entity.getPlan_end().format(DATE_FORMATTER) : "";
+        dto.actual_start = entity.getActual_start() != null ? entity.getActual_start().format(DATE_FORMATTER) : "";
+        dto.actual_end = entity.getActual_end() != null ? entity.getActual_end().format(DATE_FORMATTER) : "";
         dto.status = entity.getStatus();
         dto.parent_id = entity.getParentId();
         return dto;

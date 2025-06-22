@@ -29,6 +29,7 @@ C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ChatMessageEntity.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\FeedbackEntity.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ReflectionEntity.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ReflectionSummaryEntity.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\Reminder.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\RoadmapEntry.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\Room.java
@@ -41,6 +42,7 @@ C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ChatMessageRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\FeedbackRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReflectionRepository.java
+C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReflectionSummaryRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReminderRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\RoadmapEntryRepository.java
 C:\GoogleHackathon\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\RoomRepository.java
