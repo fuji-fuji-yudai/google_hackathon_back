@@ -46,7 +46,7 @@ public class ExcelAnalyzerService {
             // 1. Excelファイルを解析
             Map<String, Object> excelData = readExcelFile(file.getInputStream());
             logger.info("Excel解析完了: {} sheets", ((List<?>) excelData.get("sheets")).size());
-
+            logger.info("Excel生データ: {}", excelData);
             // 2. Vertex AI Gemini APIでタスク分割
             String taskJson = processWithVertexAI(excelData);
 
