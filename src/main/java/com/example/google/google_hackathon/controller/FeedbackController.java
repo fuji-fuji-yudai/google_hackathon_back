@@ -54,6 +54,8 @@ public class FeedbackController {
       return ResponseEntity.ok(feedbackEntity);
     } catch (Exception e) {
       // エラーハンドリング（例: Gemini API呼び出し失敗）
+      System.err.println("エラー発生: " + e.getMessage());
+      e.printStackTrace();
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
   }
