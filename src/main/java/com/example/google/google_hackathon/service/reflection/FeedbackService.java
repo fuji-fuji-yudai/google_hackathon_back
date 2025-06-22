@@ -46,6 +46,7 @@ public class FeedbackService {
     * @throws Exception API呼び出し失敗時の例外
     */
   public FeedbackEntity createFeedback(ReflectionEntity reflectionEntity) throws Exception {
+    System.out.println("フィードバック生成処理開始");
     // Reflectionデータをプロンプトとして構築
     String reflectionData = String.format(
       "活動内容: %s\n達成事項: %s\n改善点: %s",
@@ -53,7 +54,7 @@ public class FeedbackService {
       reflectionEntity.getAchievement(),
       reflectionEntity.getImprovementPoints()
     );
-
+    System.out.println("フィードバック対象データ："+reflectionData);
     // リクエストの内容
     Map<String, Object> requestBody = Map.of(
       "instances", List.of(Map.of(
@@ -66,6 +67,7 @@ public class FeedbackService {
     SecretManagerServiceClient client = SecretManagerServiceClient.create();
     AccessSecretVersionResponse secretResponse = client.accessSecretVersion(SECRET_NAME);
     String credentialsJson = secretResponse.getPayload().getData().toStringUtf8();
+    System.out.println("credentialsJson : "+credentialsJson);
     // サービスアカウントキーを読み込んで認証情報を生成
     GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(credentialsJson.getBytes()));
     credentials.refreshIfExpired();
@@ -82,6 +84,7 @@ public class FeedbackService {
     // フィードバックを取得して返却
     List<Map<String, String>> predictions = (List<Map<String, String>>) response.getBody().get("predictions");
     String generatedFeedback = predictions.get(0).get("content");
+    System.out.println("生成したフィードバック : "+generatedFeedback);
     
     // DBにフィードバックを保存
     FeedbackEntity feedbackEntity = new FeedbackEntity(reflectionEntity.getId(), generatedFeedback, LocalDateTime.now());

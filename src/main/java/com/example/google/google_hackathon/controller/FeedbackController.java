@@ -46,6 +46,7 @@ public class FeedbackController {
   @PostMapping("/create")
   public ResponseEntity<FeedbackEntity> createFeedback(@RequestBody ReflectionEntity reflectionEntity) {
     try {
+      System.out.println("API呼び出し完了");
       // フィードバック生成処理
       FeedbackEntity feedbackEntity = feedbackService.createFeedback(reflectionEntity);
 
