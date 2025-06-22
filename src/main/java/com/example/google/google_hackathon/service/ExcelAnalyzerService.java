@@ -205,34 +205,6 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * 行からデータを抽出
-     */
-    // private Map<String, String> extractRowData(Row row, List<String> headers) {
-    //     Map<String, String> rowData = new HashMap<>();
-    //     for (int cellNum = 0; cellNum < headers.size(); cellNum++) {
-    //         Cell cell = row.getCell(cellNum);
-    //         String value = getCellValueAsString(cell);
-    //         if (!value.trim().isEmpty()) {
-    //             rowData.put(headers.get(cellNum), value);
-    //         }
-    //     }
-    //     return rowData;
-    // }
-
-    // /**
-    //  * 行が空かどうかをチェック
-    //  */
-    // private boolean isRowEmpty(Row row) {
-    //     for (int cellNum = row.getFirstCellNum(); cellNum < row.getLastCellNum(); cellNum++) {
-    //         Cell cell = row.getCell(cellNum);
-    //         if (cell != null && !getCellValueAsString(cell).trim().isEmpty()) {
-    //             return false;
-    //         }
-    //     }
-    //     return true;
-    // }
-
-    /**
      * セルの値を文字列として取得
      */
     private String getCellValueAsString(Cell cell) {
@@ -337,8 +309,8 @@ public class ExcelAnalyzerService {
 
         // Excelデータが有効かチェック
         if (!isValidExcelData(excelData)) {
-            logger.warn("Excelデータが空または無効です。基本的なWBS生成を試行します。");
-            return buildBasicWBSPrompt();
+            logger.error("Excelファイルからデータを取得できませんでした");
+            throw new RuntimeException("Excelファイルにデータが含まれていません。機能一覧、難易度、種別などのデータを含むExcelファイルをアップロードしてください。");
         }
 
         // Excelデータの特性を事前分析
@@ -460,78 +432,6 @@ public class ExcelAnalyzerService {
         }
     }
 
-    /**
-     * 基本的なWBSプロンプト（Excelデータが無効な場合の代替）
-     */
-    private String buildBasicWBSPrompt() {
-        LocalDate startDate = LocalDate.now();
-
-        return String.format("""
-                Excelデータが読み込めなかったため、標準的なソフトウェア開発WBSを生成してください。
-
-                以下のJSON配列形式で、基本的な開発フェーズのWBSを出力してください：
-
-                [
-                  {
-                    "id": 1,
-                    "title": "要件定義フェーズ",
-                    "assignee": "PM",
-                    "parentId": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "id": 2,
-                    "title": "基本設計フェーズ",
-                    "assignee": "設計担当",
-                    "parentId": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "id": 3,
-                    "title": "実装フェーズ",
-                    "assignee": "開発担当",
-                    "parentId": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "id": 4,
-                    "title": "テストフェーズ",
-                    "assignee": "テスト担当",
-                    "parentId": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  }
-                ]
-
-                【制約】
-                - JSONのみ出力（説明文なし）
-                - 日付はyyyy-MM-dd形式
-                - statusは"ToDo"固定
-                """,
-                startDate.format(DATE_FORMATTER),
-                startDate.plusWeeks(1).format(DATE_FORMATTER),
-                startDate.plusWeeks(1).format(DATE_FORMATTER),
-                startDate.plusWeeks(2).format(DATE_FORMATTER),
-                startDate.plusWeeks(2).format(DATE_FORMATTER),
-                startDate.plusWeeks(4).format(DATE_FORMATTER),
-                startDate.plusWeeks(4).format(DATE_FORMATTER),
-                startDate.plusWeeks(5).format(DATE_FORMATTER));
-    }
 
     /**
      * Excelデータから機能特性を分析
