@@ -1,12 +1,15 @@
 package com.example.google.google_hackathon.service;
 
 import com.example.google.google_hackathon.dto.TaskDto;
+import com.example.google.google_hackathon.entity.Task;
+import com.example.google.google_hackathon.repository.TaskManageRepository;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,10 +22,18 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ExcelAnalyzerService {
+
+    // 日付フォーマット定義
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    @Autowired
+    private TaskManageRepository taskManageRepository;
 
     // Gemini API キー
     @Value("${google.cloud.gemini.api-key:your-default-key}")
@@ -99,7 +110,7 @@ public class ExcelAnalyzerService {
                 return cell.getStringCellValue();
             case NUMERIC:
                 if (DateUtil.isCellDateFormatted(cell)) {
-                    return cell.getLocalDateTimeCellValue().toString();
+                    return cell.getLocalDateTimeCellValue().format(DATE_FORMATTER);
                 }
                 return String.valueOf(cell.getNumericCellValue());
             case BOOLEAN:
@@ -209,7 +220,6 @@ public class ExcelAnalyzerService {
     private String generateMockTaskData() {
         // 現在日付を取得
         LocalDate now = LocalDate.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         
         // 今日から1週間後
         LocalDate oneWeekLater = now.plusWeeks(1);
@@ -225,8 +235,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"要件定義\",\n" +
             "    \"assignee\": \"PM\",\n" +
             "    \"parentId\": null,\n" +
-            "    \"plan_start\": \"" + now.format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + oneWeekLater.format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + now.format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + oneWeekLater.format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -236,8 +246,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"基本設計\",\n" +
             "    \"assignee\": \"設計担当\",\n" +
             "    \"parentId\": null,\n" +
-            "    \"plan_start\": \"" + oneWeekLater.format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + twoWeeksLater.format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + oneWeekLater.format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + twoWeeksLater.format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -247,8 +257,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"詳細設計\",\n" +
             "    \"assignee\": \"設計担当\",\n" +
             "    \"parentId\": null,\n" +
-            "    \"plan_start\": \"" + twoWeeksLater.format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + threeWeeksLater.format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + twoWeeksLater.format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + threeWeeksLater.format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -258,8 +268,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"ログイン機能の要件定義\",\n" +
             "    \"assignee\": \"担当者A\",\n" +
             "    \"parentId\": 1,\n" +
-            "    \"plan_start\": \"" + now.format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + now.plusDays(3).format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + now.format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + now.plusDays(3).format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -269,8 +279,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"検索機能の要件定義\",\n" +
             "    \"assignee\": \"担当者B\",\n" +
             "    \"parentId\": 1,\n" +
-            "    \"plan_start\": \"" + now.plusDays(3).format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + oneWeekLater.format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + now.plusDays(3).format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + oneWeekLater.format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -280,8 +290,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"ログイン機能の基本設計\",\n" +
             "    \"assignee\": \"担当者A\",\n" +
             "    \"parentId\": 2,\n" +
-            "    \"plan_start\": \"" + oneWeekLater.format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + oneWeekLater.plusDays(3).format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + oneWeekLater.format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + oneWeekLater.plusDays(3).format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -291,8 +301,8 @@ public class ExcelAnalyzerService {
             "    \"title\": \"検索機能の基本設計\",\n" +
             "    \"assignee\": \"担当者B\",\n" +
             "    \"parentId\": 2,\n" +
-            "    \"plan_start\": \"" + oneWeekLater.plusDays(3).format(formatter) + "\",\n" +
-            "    \"plan_end\": \"" + twoWeeksLater.format(formatter) + "\",\n" +
+            "    \"plan_start\": \"" + oneWeekLater.plusDays(3).format(DATE_FORMATTER) + "\",\n" +
+            "    \"plan_end\": \"" + twoWeeksLater.format(DATE_FORMATTER) + "\",\n" +
             "    \"actual_start\": \"\",\n" +
             "    \"actual_end\": \"\",\n" +
             "    \"status\": \"ToDo\"\n" +
@@ -319,7 +329,7 @@ public class ExcelAnalyzerService {
             
             // 一時的なIDを割り当て（DB保存時に実際のIDが割り当てられる）
             LocalDate now = LocalDate.now();
-            String defaultDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String defaultDate = now.format(DATE_FORMATTER);
             
             for (int i = 0; i < taskArray.length; i++) {
                 TaskDto task = taskArray[i];
@@ -333,6 +343,7 @@ public class ExcelAnalyzerService {
                 if (task.plan_start == null || task.plan_start.isEmpty()) {
                     task.plan_start = defaultDate;
                 }
+                
                 if (task.plan_end == null || task.plan_end.isEmpty()) {
                     task.plan_end = defaultDate;
                 }
@@ -341,12 +352,16 @@ public class ExcelAnalyzerService {
                 if (task.status == null || task.status.isEmpty()) {
                     task.status = "ToDo";
                 }
+                
                 if (task.assignee == null) {
                     task.assignee = "";
                 }
+                
+                // 空の値を初期化
                 if (task.actual_start == null) {
                     task.actual_start = "";
                 }
+                
                 if (task.actual_end == null) {
                     task.actual_end = "";
                 }
@@ -359,6 +374,110 @@ public class ExcelAnalyzerService {
             System.err.println("JSONの解析に失敗しました: " + e.getMessage());
             e.printStackTrace();
             return Collections.emptyList();
+        }
+    }
+    
+    /**
+     * 分析したExcelデータをタスクとしてデータベースに保存
+     */
+    public List<TaskDto> saveExcelTasks(List<TaskDto> taskDtos) {
+        // DTOをエンティティに変換
+        List<Task> tasks = taskDtos.stream()
+                .map(this::convertToEntity)
+                .collect(Collectors.toList());
+        
+        // リポジトリを使用して保存
+        List<Task> savedTasks = taskManageRepository.saveAll(tasks);
+        
+        // 保存後のエンティティをDTOに変換して返す
+        return savedTasks.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * DTOをエンティティに変換
+     */
+    private Task convertToEntity(TaskDto dto) {
+        Task task = new Task();
+        
+        if (dto.id != null && dto.id > 0) {
+            task.setId(dto.id);
+        }
+        
+        task.setTitle(dto.title);
+        task.setAssignee(dto.assignee);
+        
+        // 文字列の日付をLocalDate型に変換
+        if (dto.plan_start != null && !dto.plan_start.isEmpty()) {
+            task.setPlan_start(parseDate(dto.plan_start));
+        }
+        
+        if (dto.plan_end != null && !dto.plan_end.isEmpty()) {
+            task.setPlan_end(parseDate(dto.plan_end));
+        }
+        
+        if (dto.actual_start != null && !dto.actual_start.isEmpty()) {
+            task.setActual_start(parseDate(dto.actual_start));
+        }
+        
+        if (dto.actual_end != null && !dto.actual_end.isEmpty()) {
+            task.setActual_end(parseDate(dto.actual_end));
+        }
+        
+        task.setStatus(dto.status);
+        task.setParentId(dto.parent_id);
+        
+        return task;
+    }
+    
+    /**
+     * エンティティをDTOに変換
+     */
+    private TaskDto convertToDto(Task entity) {
+        TaskDto dto = new TaskDto();
+        dto.id = entity.getId();
+        dto.title = entity.getTitle();
+        dto.assignee = entity.getAssignee();
+        
+        // LocalDate型を文字列に変換
+        if (entity.getPlan_start() != null) {
+            dto.plan_start = entity.getPlan_start().format(DATE_FORMATTER);
+        }
+        
+        if (entity.getPlan_end() != null) {
+            dto.plan_end = entity.getPlan_end().format(DATE_FORMATTER);
+        }
+        
+        if (entity.getActual_start() != null) {
+            dto.actual_start = entity.getActual_start().format(DATE_FORMATTER);
+        } else {
+            dto.actual_start = "";
+        }
+        
+        if (entity.getActual_end() != null) {
+            dto.actual_end = entity.getActual_end().format(DATE_FORMATTER);
+        } else {
+            dto.actual_end = "";
+        }
+        
+        dto.status = entity.getStatus();
+        dto.parent_id = entity.getParentId();
+        
+        return dto;
+    }
+    
+    // 文字列の日付をLocalDate型に変換するユーティリティメソッド
+    private LocalDate parseDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            return LocalDate.parse(dateStr, DATE_FORMATTER);
+        } catch (DateTimeParseException e) {
+            // 日付形式が異なる場合はnullを返す
+            return null;
         }
     }
 }
