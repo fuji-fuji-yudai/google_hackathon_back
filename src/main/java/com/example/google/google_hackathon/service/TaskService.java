@@ -1,4 +1,6 @@
 package com.example.google.google_hackathon.service;
+
+
 import com.example.google.google_hackathon.dto.TaskDto;
 import com.example.google.google_hackathon.entity.Task;
 import com.example.google.google_hackathon.repository.TaskManageRepository;
@@ -34,25 +36,49 @@ public class TaskService {
         dto.id = task.getId();
         dto.title = task.getTitle();
         dto.assignee = task.getAssignee();
-        dto.planStart = task.getPlanStart();
-        dto.planEnd = task.getPlanEnd();
-        dto.actualStart = task.getActualStart();
-        dto.actualEnd = task.getActualEnd();
+        dto.plan_start = task.getPlan_start();
+        dto.plan_end = task.getPlan_end();
+        dto.actual_start = task.getActual_start();
+        dto.actual_end = task.getActual_end();
+        dto.plan_start = task.getPlan_start();
+        dto.plan_end = task.getPlan_end();
+        dto.actual_start = task.getActual_start();
+        dto.actual_end = task.getActual_end();
         dto.status = task.getStatus();
+        dto.parent_id = task.getParentId(); // 修正: parentId フィールドから取得
         return dto;
     }
 
     // DTO → Entity の変換
     private Task toEntity(TaskDto dto) {
         Task task = new Task();
-        task.setId(dto.id);
+
+        // IDがnullでない場合のみ設定
+        if (dto.id != null && dto.id > 0) {
+            task.setId(dto.id);
+        }
+        // IDがnullの場合は設定しない → PostgreSQLが自動生成
+
+
+        // IDがnullでない場合のみ設定
+        if (dto.id != null && dto.id > 0) {
+            task.setId(dto.id);
+        }
+        // IDがnullの場合は設定しない → PostgreSQLが自動生成
+
         task.setTitle(dto.title);
         task.setAssignee(dto.assignee);
-        task.setPlanStart(dto.planStart);
-        task.setPlanEnd(dto.planEnd);
-        task.setActualStart(dto.actualStart);
-        task.setActualEnd(dto.actualEnd);
+        task.setPlan_start(dto.plan_start);
+        task.setPlan_end(dto.plan_end);
+        task.setActual_start(dto.actual_start);
+        task.setActual_end(dto.actual_end);
+        task.setPlan_start(dto.plan_start);
+        task.setPlan_end(dto.plan_end);
+        task.setActual_start(dto.actual_start);
+        task.setActual_end(dto.actual_end);
         task.setStatus(dto.status);
+        task.setParentId(dto.parent_id); // 修正: parentId フィールドに設定
+
         return task;
     }
 }

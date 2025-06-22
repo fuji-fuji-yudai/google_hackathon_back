@@ -38,13 +38,27 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
+                        // ロードマップエントリ（/api/roadmap-entries）の設定
+                        .requestMatchers(HttpMethod.GET, "/api/roadmap-entries").permitAll()
+                        // POST/PUT/DELETEは認証済みユーザーのみ
+                        .requestMatchers(HttpMethod.POST, "/api/roadmap-entries").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/roadmap-entries/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/roadmap-entries/**").authenticated()
+                        // OPTIONSリクエストもCORSのために許可
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/roadmap-entries/**").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/tasks").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/tasks").authenticated()
-                        .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()  // 追加
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll() // 追加
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((req, res, excep) -> res
-                                .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
+                        .authenticationEntryPoint((req, res, excep) -> {
+                            System.out.println("=== AuthenticationEntryPoint called ===");
+                            System.out.println("Request URI: " + req.getRequestURI());
+                            System.out.println("Exception: " + excep.getMessage());
+                            System.out.println("Exception class: " + excep.getClass().getName());
+                            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                        }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

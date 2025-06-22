@@ -11,10 +11,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.example.google.google_hackathon.security.JwtUtil;
 import java.util.List;
 import java.security.Principal;
 
@@ -36,7 +34,7 @@ public class TaskManageController {
     System.out.println("SecurityContext認証: " + SecurityContextHolder.getContext().getAuthentication());
     System.out.println("Request URI: " + request.getRequestURI());
     System.out.println("================================");
-    
+
     return ResponseEntity.ok(taskService.getAllTasks());
     }
 

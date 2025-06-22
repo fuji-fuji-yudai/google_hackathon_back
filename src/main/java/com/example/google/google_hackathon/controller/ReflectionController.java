@@ -1,5 +1,6 @@
 package com.example.google.google_hackathon.controller;
 
+import java.sql.Date;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -30,6 +31,42 @@ public class ReflectionController {
   public ReflectionController(ReflectionService reflectionService) {
     this.reflectionService = reflectionService;
   }
+  @GetMapping("/{date}")
+  public ResponseEntity<ReflectionEntity> getReflections(
+        @PathVariable Date date,
+        @RequestHeader("Authorization") String authHeader) {
+    System.out.println("抽出したトークン: " + authHeader);
+    String token = authHeader.replace("Bearer ", "");
+    System.out.println("Authorizationヘッダー: " + authHeader);
+    String userName = jwtTokenProvider.getUsernameFromToken(token);
+    System.out.println("トークンから取得したユーザー名: " + userName);
+    try { 
+      ReflectionEntity reflectionEntity = reflectionService.getReflectionsByDate(date, userName);
+      return ResponseEntity.ok(reflectionEntity);
+    } catch (SQLException e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
+      return null;
+    }
+  }
+  @GetMapping("/{date}")
+  public ResponseEntity<ReflectionEntity> getReflections(
+        @PathVariable Date date,
+        @RequestHeader("Authorization") String authHeader) {
+    System.out.println("抽出したトークン: " + authHeader);
+    String token = authHeader.replace("Bearer ", "");
+    System.out.println("Authorizationヘッダー: " + authHeader);
+    String userName = jwtTokenProvider.getUsernameFromToken(token);
+    System.out.println("トークンから取得したユーザー名: " + userName);
+    try { 
+      ReflectionEntity reflectionEntity = reflectionService.getReflectionsByDate(date, userName);
+      return ResponseEntity.ok(reflectionEntity);
+    } catch (SQLException e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
+      return null;
+    }
+  }
   @GetMapping
   public ResponseEntity<List<ReflectionEntity>> getReflections(
         @RequestParam int year,
@@ -50,7 +87,12 @@ public class ReflectionController {
     }
   }
   @PostMapping("/create")
-  public ReflectionEntity createReflection(@RequestBody ReflectionEntity reflectionEntity, @RequestHeader("Authorization") String authHeader) {
+  public ReflectionEntity createReflection(
+        @RequestBody ReflectionEntity reflectionEntity, 
+        @RequestHeader("Authorization") String authHeader) {
+  public ReflectionEntity createReflection(
+        @RequestBody ReflectionEntity reflectionEntity, 
+        @RequestHeader("Authorization") String authHeader) {
     System.out.println(
       "RequestBody: {" 
       + reflectionEntity.getUserId() + "," 
@@ -75,13 +117,21 @@ public class ReflectionController {
 
   @PutMapping("/update/{id}")
   public ResponseEntity<ReflectionEntity> updateReflection(
-          @PathVariable Long id,
-          @RequestBody ReflectionEntity reflectionEntity) {
-      try {
-          ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
-          return ResponseEntity.ok(updatedReflection);
-      } catch (Exception e) {
-          return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-      }
+        @PathVariable Long id,
+        @RequestBody ReflectionEntity reflectionEntity) {
+    try {
+      ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
+      return ResponseEntity.ok(updatedReflection);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+        @PathVariable Long id,
+        @RequestBody ReflectionEntity reflectionEntity) {
+    try {
+      ReflectionEntity updatedReflection = reflectionService.updateReflection(id, reflectionEntity);
+      return ResponseEntity.ok(updatedReflection);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
   }
 }

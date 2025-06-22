@@ -1,27 +1,108 @@
 package com.example.google.google_hackathon.entity;
-import jakarta.persistence.*;
-import java.time.LocalDate;
-import lombok.Getter;
-import lombok.Setter;
-import java.util.UUID;
 
-@Entity // JPAエンティティ（DBテーブルとマッピングされる）
-@Getter
-@Setter
-@Table(name = "tasks",schema = "public") // 対応するテーブル名
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Column;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "tasks")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class Task {
-
-    @Id // 主キー
-    private UUID id;
-
-    private String title;      // タスクのタイトル
-    private String assignee;   // 担当者
-    private LocalDate planStart;  // 計画開始日
-    private LocalDate planEnd;    // 計画終了日
-    private LocalDate actualStart; // 実績開始日
-    private LocalDate actualEnd;   // 実績終了日
-    private String status;     // ステータス（例：ToDo, Doing, Done）
-
-    // --- Getter / Setter 省略可能（Lombokを使うと楽） ---
-    // 必要なら @Getter @Setter をクラスにつけてもOK
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+    
+    private String title;
+    private String assignee;
+    private String plan_start;
+    private String plan_end;
+    private String actual_start;
+    private String actual_end;
+    private String status;
+    
+    // フィールド名を JPA 命名規則に合わせて修正
+    // データベースのカラム名は親クラスとの関係を明確にするため snake_case のままにする
+    @Column(name = "parent_id")
+    private Integer parentId;
+    
+    // ゲッター・セッター
+    public Integer getId() {
+        return id;
+    }
+    
+    public void setId(Integer id) {
+        this.id = id;
+    }
+    
+    public String getTitle() {
+        return title;
+    }
+    
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    
+    public String getAssignee() {
+        return assignee;
+    }
+    
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+    
+    public String getPlan_start() {
+        return plan_start;
+    }
+    
+    public void setPlan_start(String plan_start) {
+        this.plan_start = plan_start;
+    }
+    
+    public String getPlan_end() {
+        return plan_end;
+    }
+    
+    public void setPlan_end(String plan_end) {
+        this.plan_end = plan_end;
+    }
+    
+    public String getActual_start() {
+        return actual_start;
+    }
+    
+    public void setActual_start(String actual_start) {
+        this.actual_start = actual_start;
+    }
+    
+    public String getActual_end() {
+        return actual_end;
+    }
+    
+    public void setActual_end(String actual_end) {
+        this.actual_end = actual_end;
+    }
+    
+    public String getStatus() {
+        return status;
+    }
+    
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    
+    public Integer getParentId() {
+        return parentId;
+    }
+    
+    public void setParentId(Integer parentId) {
+        this.parentId = parentId;
+    }
 }

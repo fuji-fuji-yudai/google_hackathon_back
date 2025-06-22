@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "reminders")
+@Table(name = "reminders", schema = "public")
 @Data // これ一つで getter, setter, toString, equals, hashCode を自動生成
 @NoArgsConstructor // デフォルトコンストラクタを自動生成
 @AllArgsConstructor // 全フィールドを引数とするコンストラクタを自動生成 (今回はカスタムコンストラクタと競合しないよう注意)

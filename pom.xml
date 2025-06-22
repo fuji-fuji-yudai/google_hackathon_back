@@ -137,6 +137,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-secretmanager</artifactId>
+			<version>2.5.0</version>
+		</dependency>
+
+		<dependency>
     		<groupId>com.google.code.gson</groupId>
     		<artifactId>gson</artifactId>
     		<version>2.10.1</version>
@@ -145,9 +151,20 @@
 		<dependency>
   			<groupId>com.google.firebase</groupId>
   			<artifactId>firebase-admin</artifactId>
-  			<version>9.2.0</version> <!-- 最新版に更新してもOK -->
+  			<version>9.2.0</version>
 		</dependency>
 		
+		<!-- Excel処理のための Apache POI -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.2.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.3</version>
+		</dependency>
 	</dependencies>
 
 
