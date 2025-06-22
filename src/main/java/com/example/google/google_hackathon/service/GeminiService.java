@@ -39,7 +39,7 @@ public class GeminiService {
             }
             promptBuilder.append("\n質問: ").append(userQuestion);
 
-            // リクエスト構築
+            // リクエストを構築
             JsonObject requestBody = new JsonObject();
             JsonArray contents = new JsonArray();
 
