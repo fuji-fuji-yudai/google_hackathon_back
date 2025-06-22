@@ -20,7 +20,7 @@ import java.util.Optional;
 public class FeedbackService {
 
   private static final String GEMINI_API_URL = "https://gemini-ai.googleapis.com/v1/models/text-bison:predict";
-  private static final String SECRET_NAME = "projects/nomadic-bison-459812-a8/secrets/tanaka-gemini-api/versions/latest";
+  private static final String SECRET_NAME = "projects/14467698004/secrets/tanaka-gemini-api/versions/latest";
   private final FeedbackRepository feedbackRepository;
   public FeedbackService(FeedbackRepository feedbackRepository) {
     this.feedbackRepository = feedbackRepository;
