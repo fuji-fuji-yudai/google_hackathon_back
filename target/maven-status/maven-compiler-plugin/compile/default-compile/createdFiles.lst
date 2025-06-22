@@ -8,6 +8,7 @@ com\example\google\google_hackathon\service\TaskService.class
 com\example\google\google_hackathon\dto\LoginRequest.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
+com\example\google\google_hackathon\repository\FeedbackRepository.class
 com\example\google\google_hackathon\security\JwtTokenProvider.class
 com\example\google\google_hackathon\entity\RoadmapEntry.class
 com\example\google\google_hackathon\controller\RoadmapEntryController.class
@@ -23,6 +24,7 @@ com\example\google\google_hackathon\controller\HomeController.class
 com\example\google\google_hackathon\repository\ReflectionRepository.class
 com\example\google\google_hackathon\dto\RoomDTO.class
 com\example\google\google_hackathon\controller\DemoController.class
+com\example\google\google_hackathon\controller\FeedbackController.class
 com\example\google\google_hackathon\controller\ReminderController.class
 com\example\google\google_hackathon\entity\Task.class
 com\example\google\google_hackathon\entity\Room.class
@@ -33,10 +35,12 @@ com\example\google\google_hackathon\service\GeminiService.class
 com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
+com\example\google\google_hackathon\dto\SimilarMessageDTO.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
 com\example\google\google_hackathon\service\RoadmapService.class
 com\example\google\google_hackathon\security\JwtAuthenticationFilter.class
 com\example\google\google_hackathon\service\CustomUserDetailsService.class
+com\example\google\google_hackathon\service\reflection\FeedbackService.class
 com\example\google\google_hackathon\repository\ReminderRepository.class
 com\example\google\google_hackathon\entity\Reminder.class
 com\example\google\google_hackathon\GoogleHackathonApplication.class
@@ -57,3 +61,4 @@ com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
 com\example\google\google_hackathon\controller\ReflectionController.class
 com\example\google\google_hackathon\entity\ChatMessageEntity.class
+com\example\google\google_hackathon\entity\FeedbackEntity.class

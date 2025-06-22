@@ -9,6 +9,8 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import com.example.google.google_hackathon.entity.AppUser;
 import com.example.google.google_hackathon.entity.ReflectionEntity;
@@ -25,6 +27,16 @@ public class ReflectionService {
     this.appUserRepository = appUserRepository;
   }
 
+  // 指定した日付のreflectionデータを取得するメソッド
+  public ReflectionEntity getReflectionsByDate(Date date, String userName) throws SQLException {
+    System.out.println("振り返りデータ取得処理開始");
+    AppUser user = appUserRepository.findByUsername(userName)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    // データベースから取得
+    return reflectionRepository.findByUserIdAndDate(user.getId(), date);
+  }
+
+  // 月のreflectionデータを取得するメソッド
   public List<ReflectionEntity> getReflectionsByMonth(int year, int month, String userName) throws SQLException {
     System.out.println("振り返りデータ取得処理開始");
     AppUser user = appUserRepository.findByUsername(userName)
@@ -36,6 +48,7 @@ public class ReflectionService {
     return reflectionRepository.findByUserIdAndDateBetween(user.getId(), Date.valueOf(startDate), Date.valueOf(endDate));
   }
 
+  // reflectionデータを登録するメソッド
   public ReflectionEntity createReflection(ReflectionEntity reflectionEntity, String userName) throws SQLException {
     System.out.println("登録処理開始");
     AppUser user = appUserRepository.findByUsername(userName)
@@ -43,5 +56,17 @@ public class ReflectionService {
     reflectionEntity.setUserId(user.getId());
     System.out.println("取得したユーザーID : " + reflectionEntity.getUserId());
     return reflectionRepository.save(reflectionEntity);
+  }
+
+  // reflectionデータを更新するメソッド
+  public ReflectionEntity updateReflection(Long id, ReflectionEntity reflectionEntity) {
+    ReflectionEntity existingReflection = reflectionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Reflection not found"));
+    // 更新する内容を設定
+    existingReflection.setDate(reflectionEntity.getDate());
+    existingReflection.setActivity(reflectionEntity.getActivity());
+    existingReflection.setAchievement(reflectionEntity.getAchievement());
+    existingReflection.setImprovementPoints(reflectionEntity.getImprovementPoints());
+    return reflectionRepository.save(existingReflection);
   }
 }

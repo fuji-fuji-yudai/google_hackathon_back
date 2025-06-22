@@ -1,29 +1,41 @@
 package com.example.google.google_hackathon.repository;
 
 import com.example.google.google_hackathon.entity.Reminder;
-import com.example.google.google_hackathon.entity.AppUser; // AppUserエンティティをインポート
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
-import java.util.Optional;
+import java.util.Optional; // Optional を使用しているためインポートが必要
 
-@Repository
+/**
+ * ReminderRepository は Reminder エンティティに対応する
+ * データベース操作を行うためのインターフェースです。
+ * * JpaRepository を継承しているため、標準的な操作（findAll, save, delete など）が自動で使えます。
+ */
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
-    // 特定のユーザー名に紐づく全てのリマインダーを取得する
-    // Reminderエンティティの'appUser'フィールドにある'username'フィールドで検索
-    List<Reminder> findByAppUser_Username(String username);
+    /**
+     * AppUserのusernameに紐づく全てのリマインダーを取得します。
+     * Reminderエンティティ内の appUser フィールドと、AppUserエンティティ内の username フィールドを使用します。
+     * * @param username ユーザー名
+     * 
+     * @return ユーザーに紐づくリマインダーのリスト
+     */
+    List<Reminder> findByAppUser_Username(String username); // ★このメソッドが必要です★
 
-    // 特定のユーザー名に紐づく、かつ特定のステータスのリマインダーを取得する
-    List<Reminder> findByAppUser_UsernameAndStatus(String username, String status);
+    /**
+     * AppUserのusernameに紐づく、かつ特定のステータスのリマインダーを取得します。
+     * * @param username ユーザー名
+     * 
+     * @param status ステータス
+     * @return ユーザーに紐づく特定のステータスのリマインダーのリスト
+     */
+    List<Reminder> findByAppUser_UsernameAndStatus(String username, String status); // ★このメソッドが必要です★
 
-    // 特定のIDで、かつ特定のユーザー名に紐づくリマインダーを取得する
-    Optional<Reminder> findByIdAndAppUser_Username(Long id, String username);
-
-    // 特定のIDで、かつ特定のユーザー名に紐づくリマインダーを削除する
-    void deleteByIdAndAppUser_Username(Long id, String username);
-
-    // 特定のAppUserオブジェクトに紐づくリマインダーを取得
-    List<Reminder> findByAppUser(AppUser appUser);
+    /**
+     * 指定されたIDで、かつAppUserのusernameに紐づくリマインダーを取得します。
+     * * @param id 検索するリマインダーのID
+     * 
+     * @param username ユーザー名
+     * @return 該当するリマインダーのOptionalオブジェクト
+     */
+    Optional<Reminder> findByIdAndAppUser_Username(Long id, String username); // ★このメソッドが必要です★
 }
