@@ -108,6 +108,26 @@ public class ReflectionController {
     }
   }
 
+  @GetMapping("/summarize")
+  public ResponseEntity<ReflectionSummaryEntity> getReflectionSummary(
+      @RequestParam String yearMonth,
+      @RequestHeader("Authorization") String authHeader) {
+    System.out.println("抽出したトークン: " + authHeader);
+    String token = authHeader.replace("Bearer ", "");
+    System.out.println("Authorizationヘッダー: " + authHeader);
+    String userName = jwtTokenProvider.getUsernameFromToken(token);
+    System.out.println("トークンから取得したユーザー名: " + userName);
+    try {
+      ReflectionSummaryEntity reflectionSummaryEntity 
+        = reflectionService.getReflectionSummaryByUserIdAndYearMonth(yearMonth, userName);
+      return ResponseEntity.ok(reflectionSummaryEntity);
+    } catch (Exception e) {
+      System.out.println("SQLで例外が発生しました。");
+      System.out.println(e.getMessage());
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+  }
+
   @PostMapping("/summarize")
   public ResponseEntity<ReflectionSummaryEntity> summarizeReflection(
       @RequestParam int year,

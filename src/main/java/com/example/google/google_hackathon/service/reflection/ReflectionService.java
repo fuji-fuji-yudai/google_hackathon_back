@@ -86,6 +86,17 @@ public class ReflectionService {
     return reflectionRepository.save(existingReflection);
   }
 
+  // reflectionのサマリーデータを取得するメソッド
+  public ReflectionSummaryEntity getReflectionSummaryByUserIdAndYearMonth(String yearMonth, String userName) {
+    // ユーザー情報の取得
+    AppUser user = appUserRepository.findByUsername(userName)
+                      .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    // サマリーデータを取得
+    ReflectionSummaryEntity reflectionSummaryEntity 
+      = reflectionSummaryRepository.findByUserIdAndYearMonth(user.getId(), yearMonth);
+    return reflectionSummaryEntity;
+  }
+
   // reflectionデータを要約するメソッド
   public ReflectionSummaryEntity summarizeReflection(List<ReflectionEntity> reflections, String userName, String yearMonth) throws SQLException {
     try {
