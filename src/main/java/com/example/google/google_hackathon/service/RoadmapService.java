@@ -1,6 +1,6 @@
 package com.example.google.google_hackathon.service;
 
-import com.example.google.google_hackathon.entity.RoadmapEntry; // パッケージ名を確認
+import com.example.google.google_hackathon.entity.RoadmapEntry;
 import com.example.google.google_hackathon.repository.RoadmapEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -48,6 +48,7 @@ public class RoadmapService {
 
     @Transactional(readOnly = true)
     public List<RoadmapEntry> getRoadmapEntriesByCategory(String categoryName) {
+        // RoadmapEntryRepositoryのfindByCategoryName()を使用
         return roadmapEntryRepository.findByCategoryName(categoryName);
     }
 }

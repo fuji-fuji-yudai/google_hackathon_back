@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional; // Optional をインポート
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/roadmap-entries")
@@ -41,6 +41,7 @@ public class RoadmapEntryController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
+        // ★ここを修正: roadmapEntry.setUser() は元々正しかったので戻す★
         roadmapEntry.setUser(currentUserOptional.get());
         RoadmapEntry savedEntry = roadmapEntryRepository.save(roadmapEntry);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedEntry);
@@ -62,6 +63,7 @@ public class RoadmapEntryController {
             return Collections.emptyList();
         }
 
+        // ★ここを修正: findByUser_Id() (userフィールドのIDで検索)★
         return roadmapEntryRepository.findByUser_Id(currentUserOptional.get().getId());
     }
 
@@ -89,6 +91,7 @@ public class RoadmapEntryController {
 
         RoadmapEntry existingEntry = existingEntryOptional.get();
 
+        // ★ここを修正: existingEntry.getUser() は元々正しかったので戻す★
         if (!existingEntry.getUser().getId().equals(currentUserId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden
         }
@@ -124,6 +127,7 @@ public class RoadmapEntryController {
 
         RoadmapEntry entryToDelete = entryToDeleteOptional.get();
 
+        // ★ここを修正: entryToDelete.getUser() は元々正しかったので戻す★
         if (!entryToDelete.getUser().getId().equals(currentUserId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden
         }
