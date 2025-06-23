@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
     name = "reflection_summaries",
+    schema = "public",
     uniqueConstraints = {
         @UniqueConstraint(columnNames = {"user_id", "year_month"}) // ユニーク制約を設定
     }
