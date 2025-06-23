@@ -1,4 +1,5 @@
 com\example\google\google_hackathon\listener\ChatMessageListener.class
+com\example\google\google_hackathon\service\GoogleCalendarService.class
 com\example\google\google_hackathon\config\WebConfig.class
 com\example\google\google_hackathon\controller\ChatController.class
 com\example\google\google_hackathon\service\RoomService.class
@@ -63,7 +64,9 @@ com\example\google\google_hackathon\dto\TaskDto.class
 com\example\google\google_hackathon\controller\RoomController.class
 com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
+com\example\google\google_hackathon\dto\CalendarEventRequest.class
 com\example\google\google_hackathon\entity\ReflectionSummaryEntity.class
 com\example\google\google_hackathon\controller\ReflectionController.class
 com\example\google\google_hackathon\entity\ChatMessageEntity.class
+com\example\google\google_hackathon\controller\CalendarController.class
 com\example\google\google_hackathon\entity\FeedbackEntity.class

@@ -40,38 +40,49 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // ✅ トークンからユーザー名を取得
+    // ✅ JWTトークンからユーザー名（サブジェクト）を取得します
     public String getUsernameFromToken(String token) {
-        System.out.println("DEBUG (JwtTokenProvider): Attempting to get username from token."); // ★ここ
+        System.out.println("DEBUG (JwtTokenProvider): Attempting to get username from token.");
+        // ★新規追加: トークンの一部を出力します。トークン全体は機密情報のため、一部のみ表示。
         System.out.println("DEBUG (JwtTokenProvider): Token (first 50 chars): "
-                + token.substring(0, Math.min(token.length(), 50)) + "..."); // ★ここ
+                + token.substring(0, Math.min(token.length(), 50)) + "...");
         try {
             String username = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
+                    .setSigningKey(getSigningKey()) // 署名キーを設定
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject();
-            System.out.println("DEBUG (JwtTokenProvider): Successfully extracted username: " + username); // ★ここ
+                    .parseClaimsJws(token) // JWTをパースしてJWS（署名付きJWT）として検証
+                    .getBody() // クレーム（ペイロード）を取得
+                    .getSubject(); // サブジェクト（ユーザー名）を取得
+            System.out.println("DEBUG (JwtTokenProvider): Successfully extracted username: " + username);
             return username;
         } catch (SignatureException ex) {
-            System.err.println("ERROR (JwtTokenProvider): Invalid JWT signature: " + ex.getMessage()); // ★ここ
+            // ★新規追加: 無効なJWT署名の場合のログとスタックトレース出力
+            System.err.println("ERROR (JwtTokenProvider): Invalid JWT signature: " + ex.getMessage());
+            ex.printStackTrace();
         } catch (MalformedJwtException ex) {
-            System.err.println("ERROR (JwtTokenProvider): Invalid JWT token: " + ex.getMessage()); // ★ここ
+            // ★新規追加: JWTの形式が不正な場合のログとスタックトレース出力
+            System.err.println("ERROR (JwtTokenProvider): Invalid JWT token: " + ex.getMessage());
+            ex.printStackTrace();
         } catch (ExpiredJwtException ex) {
-            System.err.println("ERROR (JwtTokenProvider): Expired JWT token: " + ex.getMessage()); // ★ここ
+            // ★新規追加: JWTの有効期限が切れている場合のログとスタックトレース出力
+            System.err.println("ERROR (JwtTokenProvider): Expired JWT token: " + ex.getMessage());
+            ex.printStackTrace();
         } catch (UnsupportedJwtException ex) {
-            System.err.println("ERROR (JwtTokenProvider): Unsupported JWT token: " + ex.getMessage()); // ★ここ
+            // ★新規追加: 未サポートのJWTトークンの場合のログとスタックトレース出力
+            System.err.println("ERROR (JwtTokenProvider): Unsupported JWT token: " + ex.getMessage());
+            ex.printStackTrace();
         } catch (IllegalArgumentException ex) {
-            System.err.println("ERROR (JwtTokenProvider): JWT claims string is empty: " + ex.getMessage()); // ★ここ
-        } catch (Exception ex) { // 最悪の場合のために残す
+            // ★新規追加: JWTクレーム文字列が空の場合などのログとスタックトレース出力
+            System.err.println("ERROR (JwtTokenProvider): JWT claims string is empty: " + ex.getMessage());
+            ex.printStackTrace();
+        } catch (Exception ex) {
             System.err.println(
                     "ERROR (JwtTokenProvider): An unexpected error occurred while getting username from token: "
                             + ex.getMessage());
-            ex.printStackTrace(); // スタックトレースも出力
+            ex.printStackTrace();
         }
-        System.out.println("DEBUG (JwtTokenProvider): Failed to get username from token. Returning null."); // ★ここ
-        return null; // エラーが発生した場合はnullを返す
+        System.out.println("DEBUG (JwtTokenProvider): Failed to get username from token. Returning null.");
+        return null;
     }
 
     // ✅ トークンの有効期限をチェック
