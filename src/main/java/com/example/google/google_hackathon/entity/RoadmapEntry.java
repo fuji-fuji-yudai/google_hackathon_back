@@ -1,7 +1,7 @@
 package com.example.google.google_hackathon.entity;
 
 import jakarta.persistence.*;
-import java.time.ZonedDateTime; // createdAt, updatedAt 用
+import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "roadmap_entries", schema = "public")
@@ -10,13 +10,10 @@ public class RoadmapEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ManyToOne関係でAppUserエンティティと紐付ける
-    // user_idカラムはデータベースではBIGINTだが、Java側ではAppUserオブジェクトとして扱う
-    @ManyToOne(fetch = FetchType.LAZY) // LAZYはパフォーマンスのため推奨
-    @JoinColumn(name = "user_id", nullable = false) // データベースの user_id カラムとマッピング
-    private AppUser user; // user_id に対応する AppUser オブジェクト
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
-    // AppUserオブジェクトのゲッターとセッター
     public AppUser getUser() {
         return user;
     }
@@ -32,10 +29,10 @@ public class RoadmapEntry {
     private String taskName;
 
     @Column(name = "start_month", nullable = false)
-    private String startMonth;
+    private Integer startMonth;
 
     @Column(name = "end_month", nullable = false)
-    private String endMonth;
+    private Integer endMonth;
 
     @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
@@ -43,15 +40,10 @@ public class RoadmapEntry {
     @Column(name = "updated_at", nullable = false)
     private ZonedDateTime updatedAt;
 
-    // コンストラクタ
     public RoadmapEntry() {
-        // AppUserエンティティにcreatedAt/updatedAtがないため、
-        // ここではRoadmapEntry自身のもののみ初期化します。
         this.createdAt = ZonedDateTime.now();
         this.updatedAt = ZonedDateTime.now();
     }
-
-    // ゲッターとセッター
 
     public Long getId() {
         return id;
@@ -77,19 +69,19 @@ public class RoadmapEntry {
         this.taskName = taskName;
     }
 
-    public String getStartMonth() {
+    public Integer getStartMonth() {
         return startMonth;
     }
 
-    public void setStartMonth(String startMonth) {
+    public void setStartMonth(Integer startMonth) {
         this.startMonth = startMonth;
     }
 
-    public String getEndMonth() {
+    public Integer getEndMonth() {
         return endMonth;
     }
 
-    public void setEndMonth(String endMonth) {
+    public void setEndMonth(Integer endMonth) {
         this.endMonth = endMonth;
     }
 
