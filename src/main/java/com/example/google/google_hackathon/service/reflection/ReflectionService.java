@@ -14,20 +14,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import com.example.google.google_hackathon.entity.AppUser;
-import com.example.google.google_hackathon.entity.FeedbackEntity;
 import com.example.google.google_hackathon.entity.ReflectionEntity;
 import com.example.google.google_hackathon.entity.ReflectionSummaryEntity;
 import com.example.google.google_hackathon.repository.AppUserRepository;
 import com.example.google.google_hackathon.repository.ReflectionRepository;
 import com.example.google.google_hackathon.repository.ReflectionSummaryRepository;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 
 @Service
 public class ReflectionService {
@@ -158,22 +153,40 @@ public class ReflectionService {
       System.out.println("response: "+response);
       JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
       System.out.println("jsonResponse: "+jsonResponse);
-      String activitySummary = jsonResponse.get("activity_summary").getAsString();
-      String achievementSummary = jsonResponse.get("achievement_summary").getAsString();
-      String improvementSummary = jsonResponse.get("improvement_summary").getAsString();
+      JsonArray candidates = jsonResponse.getAsJsonArray("candidates");
 
-      // ReflectionSummaryEntityを作成
-      ReflectionSummaryEntity summaryEntity = new ReflectionSummaryEntity();
-      summaryEntity.setUserId(user.getId());
-      summaryEntity.setYearMonth(yearMonth); // 例: "2023-10"
-      summaryEntity.setActivitySummary(activitySummary);
-      summaryEntity.setAchievementSummary(achievementSummary);
-      summaryEntity.setImprovementSummary(improvementSummary);
-      summaryEntity.setCreatedAt(LocalDateTime.now());
+      if (candidates != null && candidates.size() > 0) {
+        JsonObject content = candidates.get(0).getAsJsonObject()
+        .getAsJsonObject("content");
+        JsonArray responseParts  = content.getAsJsonArray("parts");
 
-      // データベースに保存
-      reflectionSummaryRepository.save(summaryEntity);
-      return summaryEntity;
+        if (responseParts  != null && responseParts .size() > 0) {
+          String text = responseParts .get(0).getAsJsonObject().get("text").getAsString();
+
+          // text は JSON 文字列なので、さらにパース
+          JsonObject summaryJson = JsonParser.parseString(text).getAsJsonObject();
+
+          String activitySummary = summaryJson.get("activity_summary").getAsString();
+          String achievementSummary = summaryJson.get("achievement_summary").getAsString();
+          String improvementSummary = summaryJson.get("improvement_summary").getAsString();
+          // ReflectionSummaryEntityを作成
+          ReflectionSummaryEntity summaryEntity = new ReflectionSummaryEntity();
+          summaryEntity.setUserId(user.getId());
+          summaryEntity.setYearMonth(yearMonth); // 例: "2023-10"
+          summaryEntity.setActivitySummary(activitySummary);
+          summaryEntity.setAchievementSummary(achievementSummary);
+          summaryEntity.setImprovementSummary(improvementSummary);
+          summaryEntity.setCreatedAt(LocalDateTime.now());
+
+          // データベースに保存
+          reflectionSummaryRepository.save(summaryEntity);
+          return summaryEntity;
+        } else {
+          throw new IllegalStateException("parts が空です");
+        }      
+      } else {
+        throw new IllegalStateException("candidates が空です");
+      }
     } catch (Exception e) {
       logger.error("Gemini API呼び出し中にエラーが発生しました", e);
       return null;
