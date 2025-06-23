@@ -3,6 +3,7 @@ package com.example.google.google_hackathon.controller;
 import java.sql.Date;
 import java.sql.Ref;
 import java.sql.SQLException;
+import java.time.YearMonth;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -130,8 +131,7 @@ public class ReflectionController {
 
   @PostMapping("/summarize")
   public ResponseEntity<ReflectionSummaryEntity> summarizeReflection(
-      @RequestParam int year,
-      @RequestParam int month,
+      @RequestBody ReflectionSummaryEntity requestBody,
       @RequestHeader("Authorization") String authHeader) {
     System.out.println("サマリー作成API呼び出し");
     System.out.println("抽出したトークン: " + authHeader);
@@ -139,11 +139,15 @@ public class ReflectionController {
     System.out.println("Authorizationヘッダー: " + authHeader);
     String userName = jwtTokenProvider.getUsernameFromToken(token);
     System.out.println("トークンから取得したユーザー名: " + userName);
-    String yearMonth = year + "-" + month;
-    System.out.println("年月: "+yearMonth);
+    // 年月を分解  
+    System.out.println("渡された年月: " + requestBody.getYearMonth());
+    YearMonth ym = YearMonth.parse(requestBody.getYearMonth());
+    int year = ym.getYear();
+    int month = ym.getMonthValue();
+
     try {
       List<ReflectionEntity> reflections = reflectionService.getReflectionsByMonth(year, month, userName);
-      ReflectionSummaryEntity summaryEntity = reflectionService.summarizeReflection(reflections, userName, yearMonth);
+      ReflectionSummaryEntity summaryEntity = reflectionService.summarizeReflection(reflections, userName, requestBody.getYearMonth());
       return ResponseEntity.ok(summaryEntity);
     } catch (SQLException e) {
       System.out.println("SQLで例外が発生しました。");
