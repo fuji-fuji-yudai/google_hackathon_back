@@ -1,65 +1,76 @@
 package com.example.google.google_hackathon.controller;
 
-import com.example.google.google_hackathon.dto.ReminderRequest; // DTOをインポート
-import com.example.google.google_hackathon.dto.ReminderResponse; // DTOをインポート
-import com.example.google.google_hackathon.entity.AppUser; // AppUserをインポート
-import com.example.google.google_hackathon.entity.Reminder; // Reminderエンティティをインポート
-import com.example.google.google_hackathon.service.ReminderService; // ReminderServiceをインポート
-import com.example.google.google_hackathon.repository.AppUserRepository; // AppUserRepositoryをインポート
+import com.example.google.google_hackathon.dto.ReminderRequest;
+import com.example.google.google_hackathon.dto.ReminderResponse;
+import com.example.google.google_hackathon.entity.AppUser;
+import com.example.google.google_hackathon.entity.Reminder;
+import com.example.google.google_hackathon.service.ReminderService;
+import com.example.google.google_hackathon.repository.AppUserRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize; // 認可のために追加
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid; // バリデーションのために追加
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@RestController // RESTful APIのコントローラーであることを示す
-@RequestMapping("/api/reminders") // このコントローラーのベースパス
+@RestController
+@RequestMapping("/api/reminders")
 public class ReminderController {
 
     private final ReminderService reminderService;
-    private final AppUserRepository appUserRepository; // 現在のユーザーを取得するために必要
+    private final AppUserRepository appUserRepository;
 
     public ReminderController(ReminderService reminderService, AppUserRepository appUserRepository) {
         this.reminderService = reminderService;
         this.appUserRepository = appUserRepository;
     }
 
-    // 現在認証されているユーザーのユーザー名を取得するヘルパーメソッド
+    /**
+     * 現在認証されているユーザーのユーザー名を取得するヘルパーメソッド
+     * 
+     * @return 認証されているユーザーのユーザー名、または認証されていない場合はnull
+     */
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            return null; // 認証されていない場合
+            return null; // 認証されていない場合 (通常 @PreAuthorize で阻止される)
         }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof UserDetails) {
-            return ((UserDetails) principal).getUsername();
-        }
-        return principal.toString(); // それ以外の場合（例:匿名ユーザー）
+        // Authentication.getName() は、通常、UserDetails.getUsername() の値が設定される
+        return authentication.getName();
     }
 
-    // ユーザーに紐づく全てのリマインダーを取得
+    /**
+     * 現在のユーザーに紐づく全てのリマインダーを取得します。
+     * 
+     * @return リマインダーのリストとHTTPステータスOK
+     */
     @GetMapping
-    @PreAuthorize("isAuthenticated()") // 認証されたユーザーのみアクセス可能
+    @PreAuthorize("isAuthenticated()") // 認証されたユーザーのみアクセス可能であることを保証
     public ResponseEntity<List<ReminderResponse>> getAllRemindersForCurrentUser() {
         String username = getCurrentUsername();
+        // @PreAuthorize があればこのチェックは冗長ですが、念のため残すことも可能です。
+        // もし認証に失敗していれば、そもそもここには到達しません。
         if (username == null) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED); // 認証されていない場合
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
-        List<Reminder> reminders = reminderService.getRemindersByUsername(username); // Service層にユーザー名を渡す
+        List<Reminder> reminders = reminderService.getRemindersByUsername(username);
         List<ReminderResponse> responses = reminders.stream()
-                .map(this::convertToDto) // EntityをDTOに変換
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
         return new ResponseEntity<>(responses, HttpStatus.OK);
     }
 
-    // ユーザーに紐づく、特定のIDのリマインダーを取得
+    /**
+     * 現在のユーザーに紐づく、特定のIDのリマインダーを取得します。
+     * 
+     * @param id リマインダーのID
+     * @return リマインダーデータとHTTPステータスOK、または見つからない場合はNOT_FOUND
+     */
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReminderResponse> getReminderByIdForCurrentUser(@PathVariable Long id) {
@@ -67,13 +78,18 @@ public class ReminderController {
         if (username == null) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
-        return reminderService.getReminderByIdAndUsername(id, username) // Service層にIDとユーザー名を渡す
-                .map(this::convertToDto) // EntityをDTOに変換
+        return reminderService.getReminderByIdAndUsername(id, username)
+                .map(this::convertToDto)
                 .map(reminder -> new ResponseEntity<>(reminder, HttpStatus.OK))
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND)); // 見つからないか、他人のリマインダーの場合
     }
 
-    // 新しいリマインダーを作成
+    /**
+     * 新しいリマインダーを作成します。
+     * 
+     * @param reminderRequest 作成するリマインダーのデータを含むDTO
+     * @return 作成されたリマインダーデータとHTTPステータスCREATED
+     */
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest reminderRequest) {
@@ -93,7 +109,13 @@ public class ReminderController {
         return new ResponseEntity<>(convertToDto(createdReminder), HttpStatus.CREATED);
     }
 
-    // 既存のリマインダーを更新
+    /**
+     * 既存のリマインダーを更新します。
+     * 
+     * @param id              更新するリマインダーのID
+     * @param reminderRequest 更新データを含むDTO
+     * @return 更新されたリマインダーデータとHTTPステータスOK、または見つからない場合はNOT_FOUND
+     */
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReminderResponse> updateReminder(@PathVariable Long id,
@@ -109,10 +131,15 @@ public class ReminderController {
         if (updatedReminder != null) {
             return new ResponseEntity<>(convertToDto(updatedReminder), HttpStatus.OK);
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 見つからないか、他人のリマインダーの場合
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    // リマインダーを削除
+    /**
+     * リマインダーを削除します。
+     * 
+     * @param id 削除するリマインダーのID
+     * @return HTTPステータスNO_CONTENT（削除成功）、またはNOT_FOUND
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteReminder(@PathVariable Long id) {
@@ -127,10 +154,15 @@ public class ReminderController {
         if (deleted) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 削除成功
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 見つからないか、他人のリマインダーの場合
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    // EntityからDTOへの変換ヘルパー
+    /**
+     * ReminderエンティティをReminderResponse DTOに変換するヘルパーメソッド。
+     * 
+     * @param reminder 変換するReminderエンティティ
+     * @return 変換されたReminderResponse DTO
+     */
     private ReminderResponse convertToDto(Reminder reminder) {
         ReminderResponse dto = new ReminderResponse();
         dto.setId(reminder.getId());
@@ -139,20 +171,25 @@ public class ReminderController {
         dto.setRemindTime(reminder.getRemindTime());
         dto.setDescription(reminder.getDescription());
         dto.setStatus(reminder.getStatus());
-        // dto.setUsername(reminder.getAppUser().getUsername()); // 必要ならユーザー名もDTOに含める
         return dto;
     }
 
-    // DTOからEntityへの変換ヘルパー
+    /**
+     * ReminderRequest DTOをReminderエンティティに変換するヘルパーメソッド。
+     * 
+     * @param dto 変換するReminderRequest DTO
+     * @return 変換されたReminderエンティティ
+     */
     private Reminder convertToEntity(ReminderRequest dto) {
         Reminder entity = new Reminder();
-        // IDはDBが自動生成するため設定しない
+        // IDは通常、DBが自動生成するため、DTOから設定しない
         entity.setCustomTitle(dto.getCustomTitle());
         entity.setRemindDate(dto.getRemindDate());
         entity.setRemindTime(dto.getRemindTime());
         entity.setDescription(dto.getDescription());
-        entity.setStatus(dto.getStatus() != null ? dto.getStatus() : "PENDING"); // DTOでステータスが指定されなければPENDING
-        // appUserはここで設定しない（createReminderメソッド内で設定する）
+        // DTOでステータスが指定されなければ"PENDING"をデフォルトとする
+        entity.setStatus(dto.getStatus() != null ? dto.getStatus() : "PENDING");
+        // appUserはここで設定しない（通常はControllerやServiceで設定される）
         return entity;
     }
 }
