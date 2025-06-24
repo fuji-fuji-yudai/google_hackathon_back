@@ -1,5 +1,6 @@
 package com.example.google.google_hackathon.service;
 
+import com.example.google.google_hackathon.dto.ReflectionSummaryDtoByFuji;
 import com.example.google.google_hackathon.dto.SimilarMessageDTO;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.gson.*;
@@ -85,4 +86,20 @@ public class GeminiService {
             return "エラーが発生しました: " + e.getMessage();
         }
     }
+
+    public String generateRoadmapProposal(String category, List<ReflectionSummaryDtoByFuji> summaries) {
+    StringBuilder promptBuilder = new StringBuilder();
+    promptBuilder.append("以下のカテゴリ、業務の振り返り履歴をもとに、カテゴリに合わせた今後のロードマップ作製案を提示してください。\n\n");
+    promptBuilder.append("カテゴリ: ").append(category).append("\n\n");
+
+    for (ReflectionSummaryDtoByFuji summary : summaries) {
+        promptBuilder.append("【").append(summary.getYearMonth()).append("】\n");
+        promptBuilder.append("活動内容: ").append(summary.getActivitySummary()).append("\n");
+        promptBuilder.append("達成事項: ").append(summary.getAchievementSummary()).append("\n");
+        promptBuilder.append("改善点: ").append(summary.getImprovementSummary()).append("\n\n");
+    }
+
+    return generateAnswer(promptBuilder.toString(), List.of()); // SimilarMessageDTO は使わない
+}
+
 }

@@ -7,6 +7,7 @@ com\example\google\google_hackathon\controller\ExcelAnalyzerController.class
 com\example\google\google_hackathon\repository\RoadmapEntryRepository.class
 com\example\google\google_hackathon\config\model\ChatMessage.class
 com\example\google\google_hackathon\service\TaskService.class
+com\example\google\google_hackathon\controller\RoadMapByGeminiController.class
 com\example\google\google_hackathon\dto\LoginRequest.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
@@ -39,12 +40,15 @@ com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
 com\example\google\google_hackathon\dto\SimilarMessageDTO.class
+com\example\google\google_hackathon\controller\ReflectionSummaryControllerByFuji.class
+com\example\google\google_hackathon\dto\RoadmapRequestDto.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
 com\example\google\google_hackathon\service\RoadmapService.class
 com\example\google\google_hackathon\service\ExcelAnalyzerService$1.class
 com\example\google\google_hackathon\security\JwtAuthenticationFilter.class
 com\example\google\google_hackathon\service\CustomUserDetailsService.class
 com\example\google\google_hackathon\service\reflection\FeedbackService.class
+com\example\google\google_hackathon\service\AppUserService.class
 com\example\google\google_hackathon\repository\ReminderRepository.class
 com\example\google\google_hackathon\entity\Reminder.class
 com\example\google\google_hackathon\GoogleHackathonApplication.class
@@ -55,6 +59,7 @@ com\example\google\google_hackathon\repository\RoomRepository.class
 com\example\google\google_hackathon\service\VertexAIService.class
 com\example\google\google_hackathon\dto\RoomRequest.class
 com\example\google\google_hackathon\service\ChatMessageService.class
+com\example\google\google_hackathon\service\ReflectionSummaryService.class
 com\example\google\google_hackathon\repository\ReflectionSummaryRepository.class
 com\example\google\google_hackathon\entity\ReflectionEntity.class
 com\example\google\google_hackathon\interceptor\JwtHandshakeInterceptor.class
@@ -67,6 +72,7 @@ com\example\google\google_hackathon\controller\LoginApiController.class
 com\example\google\google_hackathon\dto\CalendarEventRequest.class
 com\example\google\google_hackathon\entity\ReflectionSummaryEntity.class
 com\example\google\google_hackathon\controller\ReflectionController.class
+com\example\google\google_hackathon\dto\ReflectionSummaryDtoByFuji.class
 com\example\google\google_hackathon\entity\ChatMessageEntity.class
 com\example\google\google_hackathon\controller\CalendarController.class
 com\example\google\google_hackathon\entity\FeedbackEntity.class
