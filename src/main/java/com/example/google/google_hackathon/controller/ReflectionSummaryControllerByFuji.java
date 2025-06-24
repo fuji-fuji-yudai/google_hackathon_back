@@ -1,5 +1,6 @@
 package com.example.google.google_hackathon.controller;
 
+import java.io.Console;
 import java.util.List;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ public class ReflectionSummaryControllerByFuji {
     ) {
         String userName = null;
         String token = authHeader.replace("Bearer ", "");
-        //System.out.println("トークンはこちら！！"+token);
+        System.out.println("suggest来てます。トークンはこちら！！"+token);
         if (JwtUtil.validateToken(token)) {
             userName = JwtUtil.getUsernameFromToken(token);
         } else {
@@ -51,7 +52,7 @@ public class ReflectionSummaryControllerByFuji {
         Long userId = AppUserService.getUserIdByUsername(userName);
         List<ReflectionSummaryDtoByFuji> result = service.getSummariesByPeriod(userId, period);
 
-        
+        System.out.println("振替りはゲット！");
         // RoadmapRequestDto を作成
         RoadmapRequestDto requestDto = new RoadmapRequestDto();
         requestDto.setCategory(category);

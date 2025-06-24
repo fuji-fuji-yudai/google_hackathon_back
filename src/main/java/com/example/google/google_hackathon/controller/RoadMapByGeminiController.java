@@ -18,6 +18,7 @@ public class RoadMapByGeminiController {
 
     @PostMapping("/generate")
     public ResponseEntity<String> generateRoadmap(@RequestBody RoadmapRequestDto request) {
+        System.out.println("gemini来てます。トークンはこちら！！");
         String result = geminiService.generateRoadmapProposal(request.getCategory(), request.getSummaries());
         return ResponseEntity.ok(result);
     }
