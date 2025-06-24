@@ -6,7 +6,7 @@ public class RoadmapRequestDto {
     private String category;
     private List<ReflectionSummaryDtoByFuji> summaries;
 
-    // ゲッター・セッター
+    // ゲッター
     public String getCategory() {
         return category;
     }
@@ -15,14 +15,12 @@ public class RoadmapRequestDto {
         return summaries;
     }
 
-    public void setCategory(String category2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setCategory'");
+    // セッター
+    public void setCategory(String category) {
+        this.category = category;
     }
 
-    public void setSummaries(List<ReflectionSummaryDtoByFuji> result) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setSummaries'");
+    public void setSummaries(List<ReflectionSummaryDtoByFuji> summaries) {
+        this.summaries = summaries;
     }
-
 }
