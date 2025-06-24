@@ -35,7 +35,7 @@ public class Reminder {
 
     // AppUserとの関連付け (以前の指示通り)
     @ManyToOne(fetch = FetchType.LAZY) // 複数のリマインダーが一人のAppUserに属する
-    @JoinColumn(name = "app_user_id", nullable = false) // データベース上の外部キーカラム名。AppUserエンティティの主キーに紐づく
+    @JoinColumn(name = "user_id", nullable = false) // データベース上の外部キーカラム名。AppUserエンティティの主キーに紐づく
     private AppUser appUser; // リマインダーの所有者
 
     // カスタムコンストラクタ（特定のフィールドで初期化したい場合、@NoArgsConstructorと@AllArgsConstructorと併用可）
