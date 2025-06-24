@@ -89,7 +89,7 @@ public class GeminiService {
 
     public String generateRoadmapProposal(String category, List<ReflectionSummaryDtoByFuji> summaries) {
     StringBuilder promptBuilder = new StringBuilder();
-    promptBuilder.append("以下のカテゴリ、業務の振り返り履歴をもとに、カテゴリに合わせた今後のロードマップ作製案を提示してください。\n\n");
+    promptBuilder.append("以下のカテゴリ、業務の振り返り履歴をもとに、カテゴリに合わせた今後のロードマップ作製案を、マークダウン形式で簡潔に提示してください。\n\n");
     promptBuilder.append("カテゴリ: ").append(category).append("\n\n");
 
     for (ReflectionSummaryDtoByFuji summary : summaries) {
