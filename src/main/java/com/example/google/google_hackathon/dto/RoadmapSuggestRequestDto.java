@@ -5,11 +5,11 @@ public class RoadmapSuggestRequestDto {
     private String category;
     public String getCategory() {
         
-        return period;
+        return category;
     }
     public String getPeriod() {
         
-        return category;
+        return period;
     }
 
     // getter/setter
