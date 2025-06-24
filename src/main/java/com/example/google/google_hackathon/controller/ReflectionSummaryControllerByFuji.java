@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.example.google.google_hackathon.dto.ReflectionSummaryDtoByFuji;
 import com.example.google.google_hackathon.dto.RoadmapRequestDto;
+import com.example.google.google_hackathon.security.JwtTokenProvider;
 import com.example.google.google_hackathon.security.JwtUtil;
 import com.example.google.google_hackathon.service.AppUserService;
 import com.example.google.google_hackathon.service.ReflectionSummaryService;
@@ -32,6 +33,8 @@ public class ReflectionSummaryControllerByFuji {
     
     @Autowired
     private RestTemplate restTemplate;
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
 
 
@@ -45,7 +48,7 @@ public class ReflectionSummaryControllerByFuji {
         String token = authHeader.replace("Bearer ", "");
         System.out.println("suggest来てます。トークンはこちら！！"+token);
         if (JwtUtil.validateToken(token)) {
-            userName = JwtUtil.getUsernameFromToken(token);
+            userName = jwtTokenProvider.getUsernameFromToken(token);
         } else {
             userName = "null";
         }
