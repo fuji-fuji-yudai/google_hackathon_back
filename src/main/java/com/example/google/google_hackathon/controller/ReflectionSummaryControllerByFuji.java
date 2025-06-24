@@ -9,6 +9,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,40 +35,36 @@ public class ReflectionSummaryControllerByFuji {
     
     @Autowired
     private RestTemplate restTemplate;
-    @Autowired
-    private JwtTokenProvider jwtTokenProvider;
+    // @Autowired
+    // private JwtTokenProvider jwtTokenProvider;
 
 
 
     @GetMapping("/suggest")
-    public ResponseEntity<String> getSummary(
-        @Header("Authorization") String authHeader,
-        @RequestParam String period,
-        @RequestParam String category
-    ) {
-        String userName = null;
-        String token = authHeader.replace("Bearer ", "");
-        System.out.println("suggest来てます。トークンはこちら！！"+token);
-        if (JwtUtil.validateToken(token)) {
-            userName = jwtTokenProvider.getUsernameFromToken(token);
-        } else {
-            userName = "null";
-        }
-        Long userId = AppUserService.getUserIdByUsername(userName);
-        List<ReflectionSummaryDtoByFuji> result = service.getSummariesByPeriod(userId, period);
+public ResponseEntity<String> getSummary(
+    @AuthenticationPrincipal UserDetails userDetails,
+    @RequestParam String period,
+    @RequestParam String category
+) {
+    String userName = userDetails.getUsername();
+    Long userId = AppUserService.getUserIdByUsername(userName);
+    List<ReflectionSummaryDtoByFuji> result = service.getSummariesByPeriod(userId, period);
 
-        System.out.println("振替りはゲット！");
-        // RoadmapRequestDto を作成
-        RoadmapRequestDto requestDto = new RoadmapRequestDto();
-        requestDto.setCategory(category);
-        requestDto.setSummaries(result);
+    RoadmapRequestDto requestDto = new RoadmapRequestDto();
+    requestDto.setCategory(category);
+    requestDto.setSummaries(result);
 
-        
-        // API呼び出し
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<RoadmapRequestDto> request = new HttpEntity<>(requestDto, headers);
-        String roadmapResult = restTemplate.postForObject("https://my-image-14467698004.asia-northeast1.run.app/api/roadmap/generate", request, String.class);
-        return ResponseEntity.ok(roadmapResult);
-    }
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    HttpEntity<RoadmapRequestDto> request = new HttpEntity<>(requestDto, headers);
+
+    String roadmapResult = restTemplate.postForObject(
+        "https://my-image-14467698004.asia-northeast1.run.app/api/roadmap/generate",
+        request,
+        String.class
+    );
+
+    return ResponseEntity.ok(roadmapResult);
+}
+
 }

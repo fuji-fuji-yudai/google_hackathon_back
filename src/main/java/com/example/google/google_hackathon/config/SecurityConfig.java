@@ -47,10 +47,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/roadmap-entries/**").authenticated()
                         // OPTIONSリクエストもCORSのために許可
                         .requestMatchers(HttpMethod.OPTIONS, "/api/roadmap-entries/**").permitAll()
-
                         .requestMatchers(HttpMethod.GET, "/api/tasks").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/tasks").authenticated()
-                        .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll() // 追加
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()
+                        .requestMatchers("/api/reflections/**").authenticated() // 追加
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> {
