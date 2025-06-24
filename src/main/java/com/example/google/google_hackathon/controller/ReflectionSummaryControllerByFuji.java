@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.example.google.google_hackathon.dto.ReflectionSummaryDtoByFuji;
 import com.example.google.google_hackathon.dto.RoadmapRequestDto;
+import com.example.google.google_hackathon.dto.RoadmapSuggestRequestDto;
 import com.example.google.google_hackathon.security.JwtTokenProvider;
 import com.example.google.google_hackathon.security.JwtUtil;
 import com.example.google.google_hackathon.service.AppUserService;
@@ -42,27 +43,26 @@ public class ReflectionSummaryControllerByFuji {
 
 
 
-    @PostMapping("/suggest")
+   @PostMapping("/suggest")
 public ResponseEntity<String> getSummary(
     @AuthenticationPrincipal UserDetails userDetails,
-    @RequestBody String period,
-    @RequestBody String category
+    @RequestBody RoadmapSuggestRequestDto request
 ) {
     String userName = userDetails.getUsername();
     Long userId = AppUserService.getUserIdByUsername(userName);
-    List<ReflectionSummaryDtoByFuji> result = service.getSummariesByPeriod(userId, period);
+    List<ReflectionSummaryDtoByFuji> result = service.getSummariesByPeriod(userId, request.getPeriod());
 
     RoadmapRequestDto requestDto = new RoadmapRequestDto();
-    requestDto.setCategory(category);
+    requestDto.setCategory(request.getCategory());
     requestDto.setSummaries(result);
 
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
-    HttpEntity<RoadmapRequestDto> request = new HttpEntity<>(requestDto, headers);
+    HttpEntity<RoadmapRequestDto> httpRequest = new HttpEntity<>(requestDto, headers);
 
     String roadmapResult = restTemplate.postForObject(
         "https://my-image-14467698004.asia-northeast1.run.app/api/roadmap/generate",
-        request,
+        httpRequest,
         String.class
     );
 
