@@ -32,6 +32,7 @@ com\example\google\google_hackathon\controller\ReminderController.class
 com\example\google\google_hackathon\entity\Task.class
 com\example\google\google_hackathon\entity\Room.class
 com\example\google\google_hackathon\service\ExcelAnalyzerService.class
+com\example\google\google_hackathon\dto\RoadmapSuggestRequestDto.class
 com\example\google\google_hackathon\config\FirestoreConfig.class
 com\example\google\google_hackathon\interceptor\JwtChannelInterceptor.class
 com\example\google\google_hackathon\security\JwtUtil.class
