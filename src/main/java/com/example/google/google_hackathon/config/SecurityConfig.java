@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/tasks").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()
                         .requestMatchers("/api/reflections/**").authenticated() // 追加
+                        .requestMatchers("/api/roadmap/generate").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> {
