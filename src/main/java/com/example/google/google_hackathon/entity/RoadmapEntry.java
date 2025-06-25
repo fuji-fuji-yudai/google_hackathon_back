@@ -14,14 +14,6 @@ public class RoadmapEntry {
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;
 
-    public AppUser getUser() {
-        return user;
-    }
-
-    public void setUser(AppUser user) {
-        this.user = user;
-    }
-
     @Column(name = "category_name", nullable = false)
     private String categoryName;
 
@@ -34,6 +26,12 @@ public class RoadmapEntry {
     @Column(name = "end_month", nullable = false)
     private Integer endMonth;
 
+    @Column(name = "start_year", nullable = false)
+    private Integer startYear;
+
+    @Column(name = "end_year", nullable = false)
+    private Integer endYear;
+
     @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
 
@@ -45,12 +43,35 @@ public class RoadmapEntry {
         this.updatedAt = ZonedDateTime.now();
     }
 
+    // コンストラクタを更新する場合（推奨）
+    public RoadmapEntry(AppUser user, String categoryName, String taskName, Integer startMonth, Integer endMonth,
+            Integer startYear, Integer endYear) {
+        this.user = user;
+        this.categoryName = categoryName;
+        this.taskName = taskName;
+        this.startMonth = startMonth;
+        this.endMonth = endMonth;
+        this.startYear = startYear;
+        this.endYear = endYear;
+        this.createdAt = ZonedDateTime.now();
+        this.updatedAt = ZonedDateTime.now();
+    }
+
+    // --- Getters and Setters ---
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public AppUser getUser() {
+        return user;
+    }
+
+    public void setUser(AppUser user) {
+        this.user = user;
     }
 
     public String getCategoryName() {
@@ -83,6 +104,22 @@ public class RoadmapEntry {
 
     public void setEndMonth(Integer endMonth) {
         this.endMonth = endMonth;
+    }
+
+    public Integer getStartYear() {
+        return startYear;
+    }
+
+    public void setStartYear(Integer startYear) {
+        this.startYear = startYear;
+    }
+
+    public Integer getEndYear() {
+        return endYear;
+    }
+
+    public void setEndYear(Integer endYear) {
+        this.endYear = endYear;
     }
 
     public ZonedDateTime getCreatedAt() {
