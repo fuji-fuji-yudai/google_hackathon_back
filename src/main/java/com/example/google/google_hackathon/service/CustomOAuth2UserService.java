@@ -46,8 +46,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String accessToken = userRequest.getAccessToken().getTokenValue();
 
         // OAuth2AccessTokenから直接RefreshTokenは取得できないため、nullをセット
-        String refreshToken = null; /
-
+        String refreshToken = null;
         Instant expiryInstant = userRequest.getAccessToken().getExpiresAt();
         LocalDateTime expiryDate = (expiryInstant != null) ? LocalDateTime.ofInstant(expiryInstant, ZoneOffset.UTC)
                 : null;
@@ -64,7 +63,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             appUser.setEmail(email); // AppUserエンティティにsetEmailが追加されたのでOK
             // OAuth2認証ユーザーなので、パスワードはダミー値を設定
             appUser.setPassword("{noop}" + UUID.randomUUID().toString());
-            
+
             appUser = appUserRepository.save(appUser); // AppUserを先に保存してIDを取得
         }
 
