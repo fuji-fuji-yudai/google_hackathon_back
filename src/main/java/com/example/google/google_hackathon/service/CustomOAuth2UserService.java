@@ -46,23 +46,29 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String accessToken = userRequest.getAccessToken().getTokenValue();
 
         // OAuth2AccessTokenから直接RefreshTokenは取得できないため、nullをセット
+        // ※ リフレッシュトークンが必要な場合は、追加のOAuth2設定（例: prompt=consent）やGoogle APIの許可が必要になります。
         String refreshToken = null;
         Instant expiryInstant = userRequest.getAccessToken().getExpiresAt();
         LocalDateTime expiryDate = (expiryInstant != null) ? LocalDateTime.ofInstant(expiryInstant, ZoneOffset.UTC)
                 : null;
 
         // JWT認証用のAppUserを検索または作成
-        Optional<AppUser> existingAppUser = appUserRepository.findByEmail(email);
+        // emailカラムが存在しないため、username（Googleのemailをusernameとして利用）で検索
+        Optional<AppUser> existingAppUser = appUserRepository.findByUsername(email);
         AppUser appUser;
         if (existingAppUser.isPresent()) {
             appUser = existingAppUser.get();
+            // 既存ユーザーの場合、必要に応じてユーザー名などを更新することも検討
+            // appUser.setUsername(email); // 例えば、Googleのemailが変更された場合など
         } else {
             // 新規AppUserを作成（既存のJWT認証フローと共存するため）
             appUser = new AppUser();
-            appUser.setUsername(email); // 例: emailをユーザー名とする
-            appUser.setEmail(email); // AppUserエンティティにsetEmailが追加されたのでOK
+            appUser.setUsername(email); // GoogleのemailをAppUserのusernameとする
+            // appUser.setEmail(email); // AppUserエンティティにemailフィールドがないため、この行は削除
+
             // OAuth2認証ユーザーなので、パスワードはダミー値を設定
             appUser.setPassword("{noop}" + UUID.randomUUID().toString());
+            appUser.setRole("USER"); // 新規ユーザーにデフォルトのロールを設定
 
             appUser = appUserRepository.save(appUser); // AppUserを先に保存してIDを取得
         }
