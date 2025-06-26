@@ -43,6 +43,7 @@ com\example\google\google_hackathon\config\WebSocketConfig$1.class
 com\example\google\google_hackathon\dto\SimilarMessageDTO.class
 com\example\google\google_hackathon\controller\ReflectionSummaryControllerByFuji.class
 com\example\google\google_hackathon\dto\RoadmapRequestDto.class
+com\example\google\google_hackathon\entity\RoadmapCategory.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
 com\example\google\google_hackathon\service\RoadmapService.class
 com\example\google\google_hackathon\service\ExcelAnalyzerService$1.class
@@ -63,6 +64,7 @@ com\example\google\google_hackathon\service\ChatMessageService.class
 com\example\google\google_hackathon\service\ReflectionSummaryService.class
 com\example\google\google_hackathon\repository\ReflectionSummaryRepository.class
 com\example\google\google_hackathon\entity\ReflectionEntity.class
+com\example\google\google_hackathon\repository\RoadmapCategoryRepository.class
 com\example\google\google_hackathon\interceptor\JwtHandshakeInterceptor.class
 com\example\google\google_hackathon\service\SimilarityService.class
 com\example\google\google_hackathon\entity\AppUser.class
