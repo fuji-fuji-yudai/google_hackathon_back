@@ -1,41 +1,17 @@
 package com.example.google.google_hackathon.repository;
 
 import com.example.google.google_hackathon.entity.Reminder;
+import com.example.google.google_hackathon.entity.AppUser; // AppUserをimport
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
-import java.util.Optional; // Optional を使用しているためインポートが必要
+import java.util.Optional;
 
-/**
- * ReminderRepository は Reminder エンティティに対応する
- * データベース操作を行うためのインターフェースです。
- * * JpaRepository を継承しているため、標準的な操作（findAll, save, delete など）が自動で使えます。
- */
+@Repository
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
+    // ユーザー名ではなく、AppUserオブジェクトで検索するように変更
+    List<Reminder> findByAppUser(AppUser appUser); // ★変更
 
-    /**
-     * AppUserのusernameに紐づく全てのリマインダーを取得します。
-     * Reminderエンティティ内の appUser フィールドと、AppUserエンティティ内の username フィールドを使用します。
-     * * @param username ユーザー名
-     * 
-     * @return ユーザーに紐づくリマインダーのリスト
-     */
-    List<Reminder> findByAppUser_Username(String username); // ★このメソッドが必要です★
-
-    /**
-     * AppUserのusernameに紐づく、かつ特定のステータスのリマインダーを取得します。
-     * * @param username ユーザー名
-     * 
-     * @param status ステータス
-     * @return ユーザーに紐づく特定のステータスのリマインダーのリスト
-     */
-    List<Reminder> findByAppUser_UsernameAndIsCompleted(String username, Boolean isCompleted);
-
-    /**
-     * 指定されたIDで、かつAppUserのusernameに紐づくリマインダーを取得します。
-     * * @param id 検索するリマインダーのID
-     * 
-     * @param username ユーザー名
-     * @return 該当するリマインダーのOptionalオブジェクト
-     */
-    Optional<Reminder> findByIdAndAppUser_Username(Long id, String username);
+    Optional<Reminder> findByIdAndAppUser(Long id, AppUser appUser); // ★変更
 }

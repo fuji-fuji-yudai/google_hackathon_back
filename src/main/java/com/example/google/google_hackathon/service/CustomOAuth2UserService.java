@@ -2,15 +2,21 @@ package com.example.google.google_hackathon.service;
 
 import com.example.google.google_hackathon.entity.AppUser;
 import com.example.google.google_hackathon.entity.GoogleAuthToken;
+import com.example.google.google_hackathon.entity.Reminder; // Reminderエンティティをimport
 import com.example.google.google_hackathon.repository.AppUserRepository;
 import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository;
-import com.example.google.google_hackathon.security.JwtTokenProvider;
+import com.example.google.google_hackathon.repository.ReminderRepository; // ReminderRepositoryをimport
+
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder; // RequestContextHolderをimport
+import org.springframework.web.context.request.ServletRequestAttributes; // ServletRequestAttributesをimport
+
+import jakarta.servlet.http.HttpSession; // HttpSessionをimport
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -23,14 +29,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final AppUserRepository appUserRepository;
     private final GoogleAuthTokenRepository googleAuthTokenRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final ReminderRepository reminderRepository; // ReminderRepositoryを追加
+    private final GoogleCalendarService googleCalendarService; // GoogleCalendar連携を別サービスに切り出し
 
     public CustomOAuth2UserService(AppUserRepository appUserRepository,
             GoogleAuthTokenRepository googleAuthTokenRepository,
-            JwtTokenProvider jwtTokenProvider) {
+            ReminderRepository reminderRepository,
+            GoogleCalendarService googleCalendarService) { // コンストラクタに追加
         this.appUserRepository = appUserRepository;
         this.googleAuthTokenRepository = googleAuthTokenRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
+        this.reminderRepository = reminderRepository;
+        this.googleCalendarService = googleCalendarService;
     }
 
     @Override
@@ -39,63 +48,74 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oauth2User = super.loadUser(userRequest);
 
         String email = oauth2User.getAttribute("email");
-        String name = oauth2User.getAttribute("name");
         String googleId = oauth2User.getName(); // GoogleのユーザーID (subクレーム)
 
-        // アクセストークンを取得
         String accessToken = userRequest.getAccessToken().getTokenValue();
-
-        // OAuth2AccessTokenから直接RefreshTokenは取得できないため、nullをセット
-        // ※ リフレッシュトークンが必要な場合は、追加のOAuth2設定（例: prompt=consent）やGoogle APIの許可が必要になります。
-        String refreshToken = null;
+        String refreshToken = null; // OAuth2AccessTokenから直接RefreshTokenは取得できないため、nullをセット
         Instant expiryInstant = userRequest.getAccessToken().getExpiresAt();
         LocalDateTime expiryDate = (expiryInstant != null) ? LocalDateTime.ofInstant(expiryInstant, ZoneOffset.UTC)
                 : null;
 
-        // JWT認証用のAppUserを検索または作成
-        // emailカラムが存在しないため、username（Googleのemailをusernameとして利用）で検索
-        Optional<AppUser> existingAppUser = appUserRepository.findByUsername(email);
         AppUser appUser;
-        if (existingAppUser.isPresent()) {
-            appUser = existingAppUser.get();
-            // 既存ユーザーの場合、必要に応じてユーザー名などを更新することも検討
-            // appUser.setUsername(email); // 例えば、Googleのemailが変更された場合など
-        } else {
-            // 新規AppUserを作成（既存のJWT認証フローと共存するため）
-            appUser = new AppUser();
-            appUser.setUsername(email); // GoogleのemailをAppUserのusernameとする
-            // appUser.setEmail(email); // AppUserエンティティにemailフィールドがないため、この行は削除
+        Optional<GoogleAuthToken> existingGoogleAuthToken = googleAuthTokenRepository.findByGoogleId(googleId);
 
-            // OAuth2認証ユーザーなので、パスワードはダミー値を設定
-            appUser.setPassword("{noop}" + UUID.randomUUID().toString());
-            appUser.setRole("USER"); // 新規ユーザーにデフォルトのロールを設定
-
-            appUser = appUserRepository.save(appUser); // AppUserを先に保存してIDを取得
-        }
-
-        // GoogleAuthTokenの保存または更新
-        Optional<GoogleAuthToken> existingGoogleAuthToken = googleAuthTokenRepository.findByAppUser(appUser);
-        GoogleAuthToken googleAuthToken;
         if (existingGoogleAuthToken.isPresent()) {
-            googleAuthToken = existingGoogleAuthToken.get();
-            // 既存の場合、トークン情報を更新
-            googleAuthToken.setGoogleId(googleId);
-            googleAuthToken.setAccessToken(accessToken);
-            googleAuthToken.setRefreshToken(refreshToken); // nullの可能性あり
-            googleAuthToken.setExpiryDate(expiryDate);
-            googleAuthToken.setUpdatedAt(LocalDateTime.now());
+            GoogleAuthToken authToken = existingGoogleAuthToken.get();
+            appUser = authToken.getAppUser();
+
+            if (appUser == null) {
+                appUser = createGoogleLinkedAppUser(googleId, email);
+                authToken.setAppUser(appUser);
+            }
+
+            // トークン情報を更新
+            authToken.setAccessToken(accessToken);
+            authToken.setRefreshToken(refreshToken);
+            authToken.setExpiryDate(expiryDate);
+            authToken.setUpdatedAt(LocalDateTime.now());
+            googleAuthTokenRepository.save(authToken);
+
         } else {
-            // 新規の場合、GoogleAuthTokenを作成
-            googleAuthToken = new GoogleAuthToken();
-            googleAuthToken.setAppUser(appUser); // AppUserと紐付ける
-            googleAuthToken.setGoogleId(googleId);
-            googleAuthToken.setAccessToken(accessToken);
-            googleAuthToken.setRefreshToken(refreshToken); // nullの可能性あり
-            googleAuthToken.setExpiryDate(expiryDate);
-            googleAuthToken.setCreatedAt(LocalDateTime.now());
+            appUser = createGoogleLinkedAppUser(googleId, email);
+
+            GoogleAuthToken newAuthToken = new GoogleAuthToken();
+            newAuthToken.setAppUser(appUser);
+            newAuthToken.setGoogleId(googleId);
+            newAuthToken.setAccessToken(accessToken);
+            newAuthToken.setRefreshToken(refreshToken);
+            newAuthToken.setExpiryDate(expiryDate);
+            newAuthToken.setCreatedAt(LocalDateTime.now());
+            googleAuthTokenRepository.save(newAuthToken);
         }
-        googleAuthTokenRepository.save(googleAuthToken);
+
+        // ここからが新しいリダイレクト連携のロジック
+        // セッションから一時的に保存したリマインダー情報を取得
+        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest()
+                .getSession();
+        Long pendingReminderId = (Long) session.getAttribute("pendingReminderId");
+
+        if (pendingReminderId != null) {
+            Optional<Reminder> pendingReminderOpt = reminderRepository.findById(pendingReminderId);
+            if (pendingReminderOpt.isPresent()) {
+                Reminder pendingReminder = pendingReminderOpt.get();
+                // Googleカレンダー連携を試みる
+                googleCalendarService.createGoogleCalendarEvent(pendingReminder, appUser);
+                // セッションからリマインダー情報を削除
+                session.removeAttribute("pendingReminderId");
+            }
+        }
 
         return oauth2User;
+    }
+
+    private AppUser createGoogleLinkedAppUser(String googleId, String email) {
+        String uniqueUsername = "google_" + googleId;
+
+        AppUser newAppUser = new AppUser();
+        newAppUser.setUsername(uniqueUsername);
+        newAppUser.setPassword("{noop}" + UUID.randomUUID().toString());
+        newAppUser.setRole("USER");
+
+        return appUserRepository.save(newAppUser);
     }
 }
