@@ -26,7 +26,7 @@ public class ReminderService {
 
     /**
      * 特定のユーザー名に紐づく全てのリマインダーを取得します。
-     * 
+     *
      * @param username ユーザー名
      * @return ユーザーに紐づくリマインダーのリスト
      */
@@ -35,19 +35,20 @@ public class ReminderService {
     }
 
     /**
-     * 特定のユーザー名に紐づく、かつ特定のステータスのリマインダーを取得します。
+     * 特定のユーザー名に紐づく、かつ特定の完了ステータスのリマインダーを取得します。
+     * ★変更: status を isCompleted に変更し、メソッド名も調整
      * 
-     * @param username ユーザー名
-     * @param status   ステータス
+     * @param username    ユーザー名
+     * @param isCompleted 完了ステータス (true: 完了, false: 未完了)
      * @return ユーザーに紐づく特定のステータスのリマインダーのリスト
      */
-    public List<Reminder> getRemindersByUsernameAndStatus(String username, String status) {
-        return reminderRepository.findByAppUser_UsernameAndStatus(username, status);
+    public List<Reminder> getRemindersByUsernameAndIsCompleted(String username, Boolean isCompleted) {
+        return reminderRepository.findByAppUser_UsernameAndIsCompleted(username, isCompleted);
     }
 
     /**
      * 指定されたIDで、かつ特定のユーザー名に紐づくリマインダーを取得します。
-     * 
+     *
      * @param id       検索するリマインダーのID
      * @param username ユーザー名
      * @return 該当するリマインダーのOptionalオブジェクト
@@ -59,7 +60,7 @@ public class ReminderService {
     /**
      * 新しいリマインダーを作成し、データベースに保存します。
      * リマインダーエンティティには、Controller側で既にAppUserが設定されていることを想定します。
-     * 
+     *
      * @param reminder 作成するリマインダーオブジェクト（AppUserが設定済み）
      * @return 保存されたリマインダーオブジェクト
      */
@@ -75,7 +76,7 @@ public class ReminderService {
 
     /**
      * 既存のリマインダーを更新します。ユーザーの所有権を確認します。
-     * 
+     *
      * @param id              更新するリマインダーのID
      * @param reminderRequest 更新内容を含むDTO
      * @param username        現在認証されているユーザー名
@@ -93,9 +94,9 @@ public class ReminderService {
                     existingReminder.setRemindTime(reminderRequest.getRemindTime());
                     existingReminder.setDescription(reminderRequest.getDescription());
 
-                    // ステータスも更新可能にする場合、DTOで指定があれば更新
-                    if (reminderRequest.getStatus() != null) {
-                        existingReminder.setStatus(reminderRequest.getStatus());
+                    // ★修正: リクエストDTOのisCompletedを使用し、Boolean型で設定
+                    if (reminderRequest.getIsCompleted() != null) { // isCompletedはBoolean型
+                        existingReminder.setIsCompleted(reminderRequest.getIsCompleted());
                     }
 
                     return reminderRepository.save(existingReminder);
@@ -105,7 +106,7 @@ public class ReminderService {
 
     /**
      * 指定されたIDで、かつ特定のユーザー名に紐づくリマインダーを削除します。
-     * 
+     *
      * @param id       削除するリマインダーのID
      * @param username ユーザー名
      * @return 削除が成功したかどうか (true: 成功, false: 失敗/見つからない)

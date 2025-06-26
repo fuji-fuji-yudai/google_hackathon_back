@@ -28,7 +28,7 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
      * @param status ステータス
      * @return ユーザーに紐づく特定のステータスのリマインダーのリスト
      */
-    List<Reminder> findByAppUser_UsernameAndStatus(String username, String status); // ★このメソッドが必要です★
+    List<Reminder> findByAppUser_UsernameAndIsCompleted(String username, Boolean isCompleted);
 
     /**
      * 指定されたIDで、かつAppUserのusernameに紐づくリマインダーを取得します。
@@ -37,5 +37,5 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
      * @param username ユーザー名
      * @return 該当するリマインダーのOptionalオブジェクト
      */
-    Optional<Reminder> findByIdAndAppUser_Username(Long id, String username); // ★このメソッドが必要です★
+    Optional<Reminder> findByIdAndAppUser_Username(Long id, String username);
 }

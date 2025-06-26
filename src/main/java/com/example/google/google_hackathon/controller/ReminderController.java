@@ -32,7 +32,7 @@ public class ReminderController {
 
     /**
      * 現在認証されているユーザーのユーザー名を取得するヘルパーメソッド
-     * 
+     *
      * @return 認証されているユーザーのユーザー名、または認証されていない場合はnull
      */
     private String getCurrentUsername() {
@@ -46,7 +46,7 @@ public class ReminderController {
 
     /**
      * 現在のユーザーに紐づく全てのリマインダーを取得します。
-     * 
+     *
      * @return リマインダーのリストとHTTPステータスOK
      */
     @GetMapping
@@ -67,7 +67,7 @@ public class ReminderController {
 
     /**
      * 現在のユーザーに紐づく、特定のIDのリマインダーを取得します。
-     * 
+     *
      * @param id リマインダーのID
      * @return リマインダーデータとHTTPステータスOK、または見つからない場合はNOT_FOUND
      */
@@ -86,7 +86,7 @@ public class ReminderController {
 
     /**
      * 新しいリマインダーを作成します。
-     * 
+     *
      * @param reminderRequest 作成するリマインダーのデータを含むDTO
      * @return 作成されたリマインダーデータとHTTPステータスCREATED
      */
@@ -105,13 +105,14 @@ public class ReminderController {
         Reminder reminder = convertToEntity(reminderRequest);
         reminder.setAppUser(currentUser); // 作成するリマインダーに現在のユーザーを紐づける
 
+        // createReminder が Google Calendar と同期するロジックを含む想定
         Reminder createdReminder = reminderService.createReminder(reminder);
         return new ResponseEntity<>(convertToDto(createdReminder), HttpStatus.CREATED);
     }
 
     /**
      * 既存のリマインダーを更新します。
-     * 
+     *
      * @param id              更新するリマインダーのID
      * @param reminderRequest 更新データを含むDTO
      * @return 更新されたリマインダーデータとHTTPステータスOK、または見つからない場合はNOT_FOUND
@@ -126,6 +127,7 @@ public class ReminderController {
         }
 
         // 更新対象のリマインダーが現在のユーザーに属するか確認するため、IDとユーザー名を渡す
+        // supdateReminder が Google Calendar と同期するロジックを含む想定
         Reminder updatedReminder = reminderService.updateReminder(id, reminderRequest, username);
 
         if (updatedReminder != null) {
@@ -136,7 +138,7 @@ public class ReminderController {
 
     /**
      * リマインダーを削除します。
-     * 
+     *
      * @param id 削除するリマインダーのID
      * @return HTTPステータスNO_CONTENT（削除成功）、またはNOT_FOUND
      */
@@ -149,6 +151,7 @@ public class ReminderController {
         }
 
         // 削除対象のリマインダーが現在のユーザーに属するか確認するため、IDとユーザー名を渡す
+        // deleteReminder が Google Calendar と同期するロジックを含む想定
         boolean deleted = reminderService.deleteReminder(id, username);
 
         if (deleted) {
@@ -159,7 +162,7 @@ public class ReminderController {
 
     /**
      * ReminderエンティティをReminderResponse DTOに変換するヘルパーメソッド。
-     * 
+     *
      * @param reminder 変換するReminderエンティティ
      * @return 変換されたReminderResponse DTO
      */
@@ -170,13 +173,18 @@ public class ReminderController {
         dto.setRemindDate(reminder.getRemindDate());
         dto.setRemindTime(reminder.getRemindTime());
         dto.setDescription(reminder.getDescription());
-        dto.setStatus(reminder.getStatus());
+        // ★修正: ReminderエンティティのisCompletedをDTOのisCompletedに設定
+        dto.setIsCompleted(reminder.getIsCompleted());
+        // username はAppUserから取得して設定
+        if (reminder.getAppUser() != null) {
+            dto.setUsername(reminder.getAppUser().getUsername());
+        }
         return dto;
     }
 
     /**
      * ReminderRequest DTOをReminderエンティティに変換するヘルパーメソッド。
-     * 
+     *
      * @param dto 変換するReminderRequest DTO
      * @return 変換されたReminderエンティティ
      */
@@ -187,8 +195,11 @@ public class ReminderController {
         entity.setRemindDate(dto.getRemindDate());
         entity.setRemindTime(dto.getRemindTime());
         entity.setDescription(dto.getDescription());
-        // DTOでステータスが指定されなければ"PENDING"をデフォルトとする
-        entity.setStatus(dto.getStatus() != null ? dto.getStatus() : "PENDING");
+
+        // isCompletedはBoolean型なので、Boolean値を設定する
+        // ReminderRequest DTOのisCompletedがnullの場合、false（未完了）をデフォルトとするのが一般的
+        entity.setIsCompleted(dto.getIsCompleted() != null ? dto.getIsCompleted() : false);
+
         // appUserはここで設定しない（通常はControllerやServiceで設定される）
         return entity;
     }

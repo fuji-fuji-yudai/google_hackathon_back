@@ -9,6 +9,7 @@ com\example\google\google_hackathon\config\model\ChatMessage.class
 com\example\google\google_hackathon\service\TaskService.class
 com\example\google\google_hackathon\controller\RoadMapByGeminiController.class
 com\example\google\google_hackathon\dto\LoginRequest.class
+com\example\google\google_hackathon\service\CustomOAuth2UserService.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
 com\example\google\google_hackathon\repository\FeedbackRepository.class
@@ -61,6 +62,7 @@ com\example\google\google_hackathon\repository\RoomRepository.class
 com\example\google\google_hackathon\service\VertexAIService.class
 com\example\google\google_hackathon\dto\RoomRequest.class
 com\example\google\google_hackathon\service\ChatMessageService.class
+com\example\google\google_hackathon\entity\GoogleAuthToken.class
 com\example\google\google_hackathon\service\ReflectionSummaryService.class
 com\example\google\google_hackathon\repository\ReflectionSummaryRepository.class
 com\example\google\google_hackathon\entity\ReflectionEntity.class
@@ -72,6 +74,7 @@ com\example\google\google_hackathon\dto\TaskDto.class
 com\example\google\google_hackathon\controller\RoomController.class
 com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
+com\example\google\google_hackathon\repository\GoogleAuthTokenRepository.class
 com\example\google\google_hackathon\dto\CalendarEventRequest.class
 com\example\google\google_hackathon\entity\ReflectionSummaryEntity.class
 com\example\google\google_hackathon\controller\ReflectionController.class
