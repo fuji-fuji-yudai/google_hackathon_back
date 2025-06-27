@@ -117,7 +117,8 @@ public class SecurityConfig {
                             System.err.println("OAuth2 Login Failed: " + exception.getMessage());
                             // エラー発生時にフロントエンドのログインページにリダイレクトなど
                             response.sendRedirect(
-                                    "http://localhost:3000/login?auth_failed=true&error=" + exception.getMessage());
+                                    "https://my-frontimage-14467698004.asia-northeast1.run.app/login?auth_failed=true&error="
+                                            + exception.getMessage());
                         }))
                 .build();
     }
@@ -185,7 +186,7 @@ public class SecurityConfig {
             // フロントエンドにリダイレクトし、JWTトークンをURLパラメータで渡す
             // 例: http://localhost:3000/roadmap?jwt=YOUR_JWT_TOKEN
             // セキュリティのため、本番環境ではHTTPSが必須です。
-            String frontendRedirectUrl = "http://localhost:3000/roadmap?jwt=" + jwt; // フロントエンドのダッシュボードなど
+            String frontendRedirectUrl = "https://my-frontimage-14467698004.asia-northeast1.run.app" + jwt; // フロントエンド
             response.sendRedirect(frontendRedirectUrl);
         };
     }
