@@ -163,9 +163,7 @@ public class SecurityConfig {
     // Google認証成功時にユーザー情報を処理し、GoogleAuthTokenを保存
     @Bean
     public OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService() {
-        // AppUserRepository, GoogleAuthTokenRepository, JwtTokenProvider を
-        // CustomOAuth2UserService のコンストラクタに渡す
-        return new CustomOAuth2UserService(appUserRepository, googleAuthTokenRepository, jwtTokenProvider);
+        return new CustomOAuth2UserService(googleAuthTokenRepository, appUserRepository, jwtTokenProvider);
     }
 
     // OAuth2認証成功時のハンドラー

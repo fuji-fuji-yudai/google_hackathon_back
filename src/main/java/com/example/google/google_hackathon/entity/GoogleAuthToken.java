@@ -1,57 +1,50 @@
 package com.example.google.google_hackathon.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "google_auth_tokens")
-@Data // Getter, Setter, toString, equals, hashCode を自動生成
-@NoArgsConstructor
-@AllArgsConstructor
+@Table(name = "google_auth_tokens", schema = "auth") // データベースのテーブル名を指定
+@Data // Lombokのアノテーション: getter, setter, equals, hashCode, toStringを自動生成
+@NoArgsConstructor // Lombokのアノテーション: 引数なしコンストラクタを自動生成
+@AllArgsConstructor // Lombokのアノテーション: 全てのフィールドを引数とするコンストラクタを自動生成
+@Builder // Lombokのアノテーション: Builderパターンを自動生成
 public class GoogleAuthToken {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // IDを自動生成（例: MySQLの場合）
     private Long id;
 
-    // AppUserへの参照（ユーザーとトークンを紐付ける）
-    // OneToOneリレーションシップで、user_idカラムを外部キーとして指定
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
-    private AppUser appUser;
+    // このトークンが紐づくアプリケーション内のユーザーID
+    // Spring SecurityのユーザーIDや、独自ユーザーIDなど
+    private String userId;
 
-    @Column(name = "google_id", unique = true, nullable = false) // GoogleのユーザーID (subクレーム) を保存
-    private String googleId;
-
-    @Column(name = "access_token", length = 2048, nullable = false) // アクセストークンは長くなる可能性があるので、長めに設定
+    // OAuth2アクセストークン
     private String accessToken;
 
-    @Column(name = "refresh_token", length = 2048) // リフレッシュトークンは取得できない場合もあるためnullable
+    // OAuth2リフレッシュトークン（オフラインアクセス用）
     private String refreshToken;
 
-    @Column(name = "expiry_date", nullable = false) // トークンの有効期限
-    private LocalDateTime expiryDate;
+    // アクセストークンの有効期限（UnixタイムスタンプまたはInstantなど）
+    private Long expiresIn;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    // トークンが発行されたスコープ（例: "https://www.googleapis.com/auth/calendar"）
+    private String scope;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    // トークンタイプ（通常 "Bearer"）
+    private String tokenType;
 
-    // エンティティが永続化される直前に実行されるコールバック
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now(); // 作成時も更新時も初期設定
-    }
+    // 作成日時
+    private java.time.LocalDateTime createdAt;
 
-    // エンティティが更新される直前に実行されるコールバック
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+    // 更新日時
+    private java.time.LocalDateTime updatedAt;
+
 }

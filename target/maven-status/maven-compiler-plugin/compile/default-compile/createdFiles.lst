@@ -12,6 +12,7 @@ com\example\google\google_hackathon\dto\LoginRequest.class
 com\example\google\google_hackathon\service\CustomOAuth2UserService.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
+com\example\google\google_hackathon\entity\GoogleAuthToken$GoogleAuthTokenBuilder.class
 com\example\google\google_hackathon\repository\FeedbackRepository.class
 com\example\google\google_hackathon\security\JwtTokenProvider.class
 com\example\google\google_hackathon\entity\RoadmapEntry.class

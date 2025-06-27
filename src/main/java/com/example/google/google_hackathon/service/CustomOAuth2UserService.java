@@ -1,101 +1,81 @@
 package com.example.google.google_hackathon.service;
 
-import com.example.google.google_hackathon.entity.AppUser;
 import com.example.google.google_hackathon.entity.GoogleAuthToken;
-import com.example.google.google_hackathon.repository.AppUserRepository;
+import com.example.google.google_hackathon.repository.AppUserRepository; // AppUserRepositoryをインポート
 import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository;
-import com.example.google.google_hackathon.security.JwtTokenProvider;
+import com.example.google.google_hackathon.security.JwtTokenProvider; // JwtTokenProviderをインポート
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final AppUserRepository appUserRepository;
     private final GoogleAuthTokenRepository googleAuthTokenRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final AppUserRepository appUserRepository; // フィールドを追加
+    private final JwtTokenProvider jwtTokenProvider; // フィールドを追加
 
-    public CustomOAuth2UserService(AppUserRepository appUserRepository,
-            GoogleAuthTokenRepository googleAuthTokenRepository,
-            JwtTokenProvider jwtTokenProvider) {
-        this.appUserRepository = appUserRepository;
+    // コンストラクタを更新: SecurityConfig.javaからの引数に合わせる
+    public CustomOAuth2UserService(GoogleAuthTokenRepository googleAuthTokenRepository,
+            AppUserRepository appUserRepository, // 引数を追加
+            JwtTokenProvider jwtTokenProvider) { // 引数を追加
         this.googleAuthTokenRepository = googleAuthTokenRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
+        this.appUserRepository = appUserRepository; // フィールドを初期化
+        this.jwtTokenProvider = jwtTokenProvider; // フィールドを初期化
     }
 
     @Override
-    @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OAuth2User oauth2User = super.loadUser(userRequest);
+        // デフォルトのOAuth2UserServiceを使ってユーザー情報をロード
+        OAuth2User oAuth2User = super.loadUser(userRequest);
 
-        String email = oauth2User.getAttribute("email");
-        String name = oauth2User.getAttribute("name");
-        String googleId = oauth2User.getName(); // GoogleのユーザーID (subクレーム)
+        // OAuth2AccessToken の情報
+        OAuth2AccessToken accessToken = userRequest.getAccessToken();
 
-        // アクセストークンを取得
-        String accessToken = userRequest.getAccessToken().getTokenValue();
-
-        // OAuth2AccessTokenから直接RefreshTokenは取得できないため、nullをセット
-        // ※ リフレッシュトークンが必要な場合は、追加のOAuth2設定（例: prompt=consent）やGoogle APIの許可が必要になります。
         String refreshToken = null;
-        Instant expiryInstant = userRequest.getAccessToken().getExpiresAt();
-        LocalDateTime expiryDate = (expiryInstant != null) ? LocalDateTime.ofInstant(expiryInstant, ZoneOffset.UTC)
-                : null;
 
-        // JWT認証用のAppUserを検索または作成
-        // emailカラムが存在しないため、username（Googleのemailをusernameとして利用）で検索
-        Optional<AppUser> existingAppUser = appUserRepository.findByUsername(email);
-        AppUser appUser;
-        if (existingAppUser.isPresent()) {
-            appUser = existingAppUser.get();
-            // 既存ユーザーの場合、必要に応じてユーザー名などを更新することも検討
-            // appUser.setUsername(email); // 例えば、Googleのemailが変更された場合など
-        } else {
-            // 新規AppUserを作成（既存のJWT認証フローと共存するため）
-            appUser = new AppUser();
-            appUser.setUsername(email); // GoogleのemailをAppUserのusernameとする
-            // appUser.setEmail(email); // AppUserエンティティにemailフィールドがないため、この行は削除
+        // ユーザーのGoogle ID (sub claim) を取得
+        String googleId = oAuth2User.getName(); // Spring Securityは通常 'sub' を name として扱う
 
-            // OAuth2認証ユーザーなので、パスワードはダミー値を設定
-            appUser.setPassword("{noop}" + UUID.randomUUID().toString());
-            appUser.setRole("USER"); // 新規ユーザーにデフォルトのロールを設定
+        Optional<GoogleAuthToken> existingToken = googleAuthTokenRepository.findByUserId(googleId);
 
-            appUser = appUserRepository.save(appUser); // AppUserを先に保存してIDを取得
-        }
-
-        // GoogleAuthTokenの保存または更新
-        Optional<GoogleAuthToken> existingGoogleAuthToken = googleAuthTokenRepository.findByAppUser(appUser);
         GoogleAuthToken googleAuthToken;
-        if (existingGoogleAuthToken.isPresent()) {
-            googleAuthToken = existingGoogleAuthToken.get();
-            // 既存の場合、トークン情報を更新
-            googleAuthToken.setGoogleId(googleId);
-            googleAuthToken.setAccessToken(accessToken);
-            googleAuthToken.setRefreshToken(refreshToken); // nullの可能性あり
-            googleAuthToken.setExpiryDate(expiryDate);
+        if (existingToken.isPresent()) {
+            googleAuthToken = existingToken.get();
+            // トークン情報を更新
+            googleAuthToken.setAccessToken(accessToken.getTokenValue());
+            // Instant から Long (Unixタイムスタンプ) へ変換
+            if (accessToken.getExpiresAt() != null) {
+                googleAuthToken.setExpiresIn(accessToken.getExpiresAt().getEpochSecond());
+            }
+            googleAuthToken.setScope(String.join(",", accessToken.getScopes()));
+            googleAuthToken.setTokenType(accessToken.getTokenType().getValue());
             googleAuthToken.setUpdatedAt(LocalDateTime.now());
+
         } else {
-            // 新規の場合、GoogleAuthTokenを作成
-            googleAuthToken = new GoogleAuthToken();
-            googleAuthToken.setAppUser(appUser); // AppUserと紐付ける
-            googleAuthToken.setGoogleId(googleId);
-            googleAuthToken.setAccessToken(accessToken);
-            googleAuthToken.setRefreshToken(refreshToken); // nullの可能性あり
-            googleAuthToken.setExpiryDate(expiryDate);
-            googleAuthToken.setCreatedAt(LocalDateTime.now());
+            // 新しいトークンを保存
+            googleAuthToken = GoogleAuthToken.builder()
+                    .userId(googleId) // アプリケーションユーザーと紐付けるID (ここでは仮にGoogle IDを使用)
+                    .accessToken(accessToken.getTokenValue())
+                    .refreshToken(refreshToken) // ここは null になる可能性が高いです
+                    .expiresIn(accessToken.getExpiresAt() != null ? accessToken.getExpiresAt().getEpochSecond() : null)
+                    .scope(String.join(",", accessToken.getScopes()))
+                    .tokenType(accessToken.getTokenType().getValue())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
         }
         googleAuthTokenRepository.save(googleAuthToken);
 
-        return oauth2User;
+        // JWTトークンプロバイダなど、他のサービスを使う場合はここでロジックを追加
+        // 例: String jwt = jwtTokenProvider.generateToken(oAuth2User); // 必要に応じて実装
+
+        return oAuth2User;
     }
 }
