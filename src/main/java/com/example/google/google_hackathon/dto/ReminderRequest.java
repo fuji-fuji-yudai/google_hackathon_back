@@ -19,5 +19,5 @@ public class ReminderRequest {
     private LocalTime remindTime;
 
     private String description;
-    private Boolean isCompleted; // 更新時などに使用するステータス
+    private Boolean isCompleted; // 更新時などに使用するステータス//
 }
