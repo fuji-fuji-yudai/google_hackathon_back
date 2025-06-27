@@ -1,6 +1,8 @@
 package com.example.google.google_hackathon.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.util.Value;
+
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.HttpMethod;
@@ -38,24 +41,34 @@ import com.example.google.google_hackathon.service.CustomUserDetailsService;
 @EnableWebSecurity // このアノテーションでSpring SecurityのWebセキュリティ機能を有効化
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
     // Google OAuth2ログイン連携のために必要な依存関係を注入
     private final AppUserRepository appUserRepository;
     private final CustomUserDetailsService customUserDetailsService; // JWT認証とOAuth2認証両方で使用
     private final JwtTokenProvider jwtTokenProvider;
     private final GoogleAuthTokenRepository googleAuthTokenRepository;
 
+    // PasswordEncoder の final 修飾子を削除し、@Autowired をつける
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Value("${app.frontend.redirect-url}")
+    private String frontendRedirectBaseUrl;
+
     // コンストラクタに新しく追加した依存関係を注入
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
             AppUserRepository appUserRepository,
             CustomUserDetailsService customUserDetailsService,
             JwtTokenProvider jwtTokenProvider,
-            GoogleAuthTokenRepository googleAuthTokenRepository) { // ★この行と上の宣言部分を追加
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+            GoogleAuthTokenRepository googleAuthTokenRepository) {
+        // this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.appUserRepository = appUserRepository;
         this.customUserDetailsService = customUserDetailsService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.googleAuthTokenRepository = googleAuthTokenRepository;
+        // this.passwordEncoder = passwordEncoder;
     }
 
     @Bean
@@ -128,11 +141,11 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        System.out.println("PasswordEncoder Bean initialized");
-        return new BCryptPasswordEncoder();
-    }
+    // @Bean
+    // public PasswordEncoder passwordEncoder() {
+    // System.out.println("PasswordEncoder Bean initialized");
+    // return new BCryptPasswordEncoder();
+    // }
 
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
@@ -164,7 +177,9 @@ public class SecurityConfig {
     // Google認証成功時にユーザー情報を処理し、GoogleAuthTokenを保存
     @Bean
     public OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService() {
-        return new CustomOAuth2UserService(googleAuthTokenRepository, appUserRepository, jwtTokenProvider);
+        // CustomOAuth2UserServiceのコンストラクタにPasswordEncoderを追加して渡す
+        return new CustomOAuth2UserService(googleAuthTokenRepository, appUserRepository, jwtTokenProvider,
+                passwordEncoder);
     }
 
     // OAuth2認証成功時のハンドラー

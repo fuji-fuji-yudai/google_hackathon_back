@@ -6,12 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-@Repository // Springにリポジトリであることを示す
+@Repository
 public interface GoogleAuthTokenRepository extends JpaRepository<GoogleAuthToken, Long> {
 
-    // userId（Google IDなど）でGoogleAuthTokenを検索するカスタムメソッド
-    Optional<GoogleAuthToken> findByUserId(String userId);
+    // googleSubId で GoogleAuthToken を検索するカスタムメソッド
+    Optional<GoogleAuthToken> findByGoogleSubId(String googleSubId);
 
     // 必要に応じて他の検索メソッドを追加できます
-    // 例: Optional<GoogleAuthToken> findByRefreshToken(String refreshToken);
 }

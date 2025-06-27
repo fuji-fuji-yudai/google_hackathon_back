@@ -2,6 +2,7 @@ com\example\google\google_hackathon\listener\ChatMessageListener.class
 com\example\google\google_hackathon\service\GoogleCalendarService.class
 com\example\google\google_hackathon\config\WebConfig.class
 com\example\google\google_hackathon\controller\ChatController.class
+com\example\google\google_hackathon\config\AppBeansConfig.class
 com\example\google\google_hackathon\service\RoomService.class
 com\example\google\google_hackathon\controller\ExcelAnalyzerController.class
 com\example\google\google_hackathon\repository\RoadmapEntryRepository.class
