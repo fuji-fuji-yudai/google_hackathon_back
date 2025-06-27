@@ -161,13 +161,15 @@ public class ReflectionService {
         .getAsJsonObject("content");
         System.out.println("content: " + content);
         JsonArray responseParts  = content.getAsJsonArray("parts");
-        System.out.println("responseParts" + responseParts);
+        System.out.println("responseParts: " + responseParts);
 
         if (responseParts  != null && responseParts .size() > 0) {
           String text = responseParts .get(0).getAsJsonObject().get("text").getAsString();
+          System.out.println("text: " + text);
 
           // text は JSON 文字列なので、さらにパース
           JsonObject summaryJson = JsonParser.parseString(text).getAsJsonObject();
+          System.out.println("summaryJson: " + summaryJson);
 
           String activitySummary = summaryJson.get("activity_summary").getAsString();
           String achievementSummary = summaryJson.get("achievement_summary").getAsString();
