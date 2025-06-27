@@ -50,6 +50,7 @@ com\example\google\google_hackathon\entity\RoadmapCategory.class
 com\example\google\google_hackathon\repository\ChatMessageRepository.class
 com\example\google\google_hackathon\service\RoadmapService.class
 com\example\google\google_hackathon\service\ExcelAnalyzerService$1.class
+com\example\google\google_hackathon\config\JacksonConfig.class
 com\example\google\google_hackathon\security\JwtAuthenticationFilter.class
 com\example\google\google_hackathon\service\CustomUserDetailsService.class
 com\example\google\google_hackathon\service\reflection\FeedbackService.class
