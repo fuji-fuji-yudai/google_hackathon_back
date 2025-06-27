@@ -6,6 +6,17 @@ import com.example.google.google_hackathon.entity.AppUser;
 import com.example.google.google_hackathon.entity.Reminder;
 import com.example.google.google_hackathon.service.ReminderService;
 import com.example.google.google_hackathon.repository.AppUserRepository;
+// ★追加: Googleカレンダーサービスをインポートします
+import com.example.google.google_hackathon.service.GoogleCalendarService;
+// ★追加: GoogleAuthException をインポートします
+import com.example.google.google_hackathon.service.GoogleAuthException;
+// ★追加: Map をインポートします（リダイレクトURLを返すため）
+import java.util.Map;
+// ★追加: JsonNode をインポートします
+import com.fasterxml.jackson.databind.JsonNode;
+// ★追加: ロギング
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,17 +28,26 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime; // LocalDateTimeのインポート
+import java.time.format.DateTimeFormatter; // DateTimeFormatterのインポート
+import java.time.format.DateTimeParseException; // DateTimeParseExceptionのインポート
 
 @RestController
 @RequestMapping("/api/reminders")
 public class ReminderController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReminderController.class); // ロガーの追加
+
     private final ReminderService reminderService;
     private final AppUserRepository appUserRepository;
+    private final GoogleCalendarService googleCalendarService; // ★追加: GoogleCalendarService を追加
 
-    public ReminderController(ReminderService reminderService, AppUserRepository appUserRepository) {
+    // コンストラクタに GoogleCalendarService を追加
+    public ReminderController(ReminderService reminderService, AppUserRepository appUserRepository,
+            GoogleCalendarService googleCalendarService) {
         this.reminderService = reminderService;
         this.appUserRepository = appUserRepository;
+        this.googleCalendarService = googleCalendarService; // ★追加: 初期化
     }
 
     /**
@@ -53,8 +73,6 @@ public class ReminderController {
     @PreAuthorize("isAuthenticated()") // 認証されたユーザーのみアクセス可能であることを保証
     public ResponseEntity<List<ReminderResponse>> getAllRemindersForCurrentUser() {
         String username = getCurrentUsername();
-        // @PreAuthorize があればこのチェックは冗長ですが、念のため残すことも可能です。
-        // もし認証に失敗していれば、そもそもここには到達しません。
         if (username == null) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
@@ -87,27 +105,68 @@ public class ReminderController {
     /**
      * 新しいリマインダーを作成します。
      *
-     * @param reminderRequest 作成するリマインダーのデータを含むDTO
-     * @return 作成されたリマインダーデータとHTTPステータスCREATED
+     * @param reminderRequest      作成するリマインダーのデータを含むDTO
+     * @param linkToGoogleCalendar Googleカレンダーと連携するかどうか (★追加)
+     * @return 作成されたリマインダーデータとHTTPステータスCREATED、またはリダイレクト情報
      */
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ReminderResponse> createReminder(@Valid @RequestBody ReminderRequest reminderRequest) {
+    public ResponseEntity<?> createReminder(@Valid @RequestBody ReminderRequest reminderRequest,
+            @RequestParam(defaultValue = "false") boolean linkToGoogleCalendar) { // ★修正点1: linkToGoogleCalendar
+                                                                                  // パラメータを追加
         String username = getCurrentUsername();
         if (username == null) {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
-        // AppUserエンティティを取得（リマインダーに紐づけるため）
         AppUser currentUser = appUserRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found in DB: " + username));
 
         Reminder reminder = convertToEntity(reminderRequest);
-        reminder.setAppUser(currentUser); // 作成するリマインダーに現在のユーザーを紐づける
+        reminder.setAppUser(currentUser);
 
-        // createReminder が Google Calendar と同期するロジックを含む想定
-        Reminder createdReminder = reminderService.createReminder(reminder);
-        return new ResponseEntity<>(convertToDto(createdReminder), HttpStatus.CREATED);
+        try {
+            Reminder createdReminder = reminderService.createReminder(reminder);
+
+            // ★修正点2: Googleカレンダー連携ロジックを追加
+            if (linkToGoogleCalendar) {
+                // 日付と時刻文字列をLocalDateTimeにパース
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+                LocalDateTime startDateTime = LocalDateTime
+                        .parse(reminderRequest.getRemindDate() + "T" + reminderRequest.getRemindTime(), formatter);
+                LocalDateTime endDateTime = startDateTime.plusHours(1); // デフォルトで1時間後のイベントとして仮設定
+
+                try {
+                    // GoogleCalendarService を呼び出してイベント作成を試みる
+                    JsonNode calendarEventResponse = googleCalendarService.createGoogleCalendarEvent(
+                            SecurityContextHolder.getContext().getAuthentication(), // 現在の認証情報を渡す
+                            reminderRequest.getCustomTitle(),
+                            reminderRequest.getDescription(),
+                            startDateTime,
+                            endDateTime,
+                            "Asia/Tokyo" // デフォルトのタイムゾーン。必要であればリクエストから取得
+                    );
+                    logger.info("Google Calendar Event created for reminder ID {}: {}", createdReminder.getId(),
+                            calendarEventResponse.toPrettyString());
+                } catch (GoogleAuthException e) {
+                    logger.warn("Google Calendar連携のために再認証が必要: {}", e.getMessage());
+                    // 権限不足などでGoogle認証が必要な場合、フロントエンドにリダイレクトURLを返す
+                    return ResponseEntity.status(HttpStatus.TEMPORARY_REDIRECT)
+                            .body(Map.of("redirectUrl", e.getAuthUrl()));
+                } catch (DateTimeParseException e) {
+                    logger.error("リマインダーの日付/時刻のパースエラー: {}", e.getMessage(), e);
+                    // ここではリマインダー自体は作成されているので、カレンダー連携エラーとしてログに記録し、リマインダーは返す
+                } catch (Exception e) {
+                    logger.error("Google Calendar連携中に予期せぬエラーが発生しました: {}", e.getMessage(), e);
+                    // ここではリマインダー自体は作成されているので、カレンダー連携エラーとしてログに記録し、リマインダーは返す
+                }
+            }
+            return new ResponseEntity<>(convertToDto(createdReminder), HttpStatus.CREATED);
+
+        } catch (Exception e) {
+            logger.error("リマインダー作成中にエラーが発生しました: {}", e.getMessage(), e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -126,8 +185,6 @@ public class ReminderController {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
-        // 更新対象のリマインダーが現在のユーザーに属するか確認するため、IDとユーザー名を渡す
-        // supdateReminder が Google Calendar と同期するロジックを含む想定
         Reminder updatedReminder = reminderService.updateReminder(id, reminderRequest, username);
 
         if (updatedReminder != null) {
@@ -150,8 +207,6 @@ public class ReminderController {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
-        // 削除対象のリマインダーが現在のユーザーに属するか確認するため、IDとユーザー名を渡す
-        // deleteReminder が Google Calendar と同期するロジックを含む想定
         boolean deleted = reminderService.deleteReminder(id, username);
 
         if (deleted) {
@@ -173,9 +228,7 @@ public class ReminderController {
         dto.setRemindDate(reminder.getRemindDate());
         dto.setRemindTime(reminder.getRemindTime());
         dto.setDescription(reminder.getDescription());
-        // ★修正: ReminderエンティティのisCompletedをDTOのisCompletedに設定
         dto.setIsCompleted(reminder.getIsCompleted());
-        // username はAppUserから取得して設定
         if (reminder.getAppUser() != null) {
             dto.setUsername(reminder.getAppUser().getUsername());
         }
@@ -190,17 +243,11 @@ public class ReminderController {
      */
     private Reminder convertToEntity(ReminderRequest dto) {
         Reminder entity = new Reminder();
-        // IDは通常、DBが自動生成するため、DTOから設定しない
         entity.setCustomTitle(dto.getCustomTitle());
         entity.setRemindDate(dto.getRemindDate());
         entity.setRemindTime(dto.getRemindTime());
         entity.setDescription(dto.getDescription());
-
-        // isCompletedはBoolean型なので、Boolean値を設定する
-        // ReminderRequest DTOのisCompletedがnullの場合、false（未完了）をデフォルトとするのが一般的
         entity.setIsCompleted(dto.getIsCompleted() != null ? dto.getIsCompleted() : false);
-
-        // appUserはここで設定しない（通常はControllerやServiceで設定される）
         return entity;
     }
 }

@@ -27,21 +27,27 @@ public class GoogleAuthToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // AppUserのIDを直接格納
-    @Column(name = "user_id", nullable = false, unique = true)
+    // ★修正: DBのカラム名 'app_user_id' に正確に合わせます。
+    // unique = true はDBの定義に合わせます。
+    @Column(name = "app_user_id", nullable = false, unique = true)
     private Long appUserId;
 
-    // GoogleのユーザーID (sub claim)
-    @Column(name = "google_sub_id", unique = true, nullable = false)
+    // ★修正: DBのカラム名 'google_id' に正確に合わせます。
+    // AppUserRepositoryのクエリが 'googleSubId' を参照するため、Javaフィールド名は 'googleSubId' のまま、
+    // DBへのマッピングで 'google_id' を指定します。
+    @Column(name = "google_id", unique = true, nullable = false)
     private String googleSubId;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String accessToken;
 
+    // DBにはrefresh_token列がありますが、現行のOAuth2UserRequestから取得できないため、コードからはnullをセットします。
     @Column(columnDefinition = "TEXT")
     private String refreshToken;
 
-    private Long expiresIn;
+    // ★修正: DBのカラム名 'expiry_date' に正確に合わせ、型を LocalDateTime に変更します。
+    @Column(name = "expiry_date")
+    private LocalDateTime expiryDate;
 
     @Column(columnDefinition = "TEXT")
     private String scope;

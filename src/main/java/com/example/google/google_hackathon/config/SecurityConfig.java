@@ -1,7 +1,7 @@
 package com.example.google.google_hackathon.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.client.util.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -11,24 +11,29 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity; // WebSecurity を有効にするアノテーション
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetails; //UserDetails をインポート
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken; //OAuth2AuthenticationToken をインポート
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest; //OAuth2UserRequest をインポート
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService; //OAuth2UserService をインポート
-import org.springframework.security.oauth2.core.user.OAuth2User; //OAuth2User をインポート
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler; // AuthenticationSuccessHandler をインポート
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.beans.factory.annotation.Autowired;
+// @Autowired のフィールドは推奨されないため、削除。コンストラクタインジェクションに集約
+// import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.HttpMethod;
+
+// ロギングのためのimportを追加
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.example.google.google_hackathon.security.JwtAuthenticationFilter;
 import com.example.google.google_hackathon.security.JwtTokenProvider;
@@ -36,39 +41,43 @@ import com.example.google.google_hackathon.service.CustomOAuth2UserService;
 import com.example.google.google_hackathon.repository.AppUserRepository;
 import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository;
 import com.example.google.google_hackathon.service.CustomUserDetailsService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.google.google_hackathon.entity.AppUser; // AppUserエンティティをインポート
+import com.example.google.google_hackathon.entity.GoogleAuthToken;
 
 @Configuration
 @EnableWebSecurity // このアノテーションでSpring SecurityのWebセキュリティ機能を有効化
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     // Google OAuth2ログイン連携のために必要な依存関係を注入
     private final AppUserRepository appUserRepository;
     private final CustomUserDetailsService customUserDetailsService; // JWT認証とOAuth2認証両方で使用
     private final JwtTokenProvider jwtTokenProvider;
     private final GoogleAuthTokenRepository googleAuthTokenRepository;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    // PasswordEncoder の final 修飾子を削除し、@Autowired をつける
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Autowired // ★修正: PasswordEncoder はコンストラクタではなく、@Autowired で注入します
+    private PasswordEncoder passwordEncoder; // ★修正: final を削除し、@Autowired を付ける
 
     @Value("${app.frontend.redirect-url}")
-    private String frontendRedirectBaseUrl;
+    private String frontendRedirectBaseUrl; // プロパティを保持
 
-    // コンストラクタに新しく追加した依存関係を注入
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+    // コンストラクタに全ての依存関係を注入（Spring Boot 2.x以降では@Autowiredを省略可能）
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
             AppUserRepository appUserRepository,
             CustomUserDetailsService customUserDetailsService,
             JwtTokenProvider jwtTokenProvider,
-            GoogleAuthTokenRepository googleAuthTokenRepository) {
-        // this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+            GoogleAuthTokenRepository googleAuthTokenRepository,
+            PasswordEncoder passwordEncoder) { // PasswordEncoder をコンストラクタに追加
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.appUserRepository = appUserRepository;
         this.customUserDetailsService = customUserDetailsService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.googleAuthTokenRepository = googleAuthTokenRepository;
-        // this.passwordEncoder = passwordEncoder;
+        // this.passwordEncoder = passwordEncoder; // 注入された PasswordEncoder を設定
     }
 
     @Bean
@@ -107,14 +116,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> {
-                            System.out.println("=== AuthenticationEntryPoint called ===");
-                            System.out.println("Request URI: " + req.getRequestURI());
-                            System.out.println("Exception: " + excep.getMessage());
-                            System.out.println("Exception class: " + excep.getClass().getName());
-                            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                            logger.warn("認証されていないリクエストが拒否されました: URI={}, 例外={}: {}",
+                                    req.getRequestURI(), excep.getClass().getName(), excep.getMessage()); // ログを改善
+                            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"); // 401 Unauthorized を返す
                         }))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                // ここからがGoogle OAuth2 Login のための新規追加部分
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // JWTフィルターを通常認証フィルターの前に配置
+                // Google OAuth2 Login のための設定
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(authorization -> authorization
                                 .baseUri("/oauth2/authorization") // OAuth2認証を開始するURI (例: /oauth2/authorization/google)
@@ -127,11 +134,14 @@ public class SecurityConfig {
                         )
                         .successHandler(authenticationSuccessHandler()) // 認証成功時のハンドラー
                         .failureHandler((request, response, exception) -> {
-                            System.err.println("OAuth2 Login Failed: " + exception.getMessage());
-                            // エラー発生時にフロントエンドのログインページにリダイレクトなど
+                            logger.error("OAuth2 Login Failed: {} URI: {}", exception.getMessage(),
+                                    request.getRequestURI(), exception); // エラーログを改善
+                            // エラー発生時にフロントエンドのログインページにリダイレクト
+                            // エラーメッセージはURLエンコードして渡すのが安全
+                            String encodedErrorMessage = java.net.URLEncoder.encode(exception.getMessage(), "UTF-8");
                             response.sendRedirect(
-                                    "https://my-frontimage-14467698004.asia-northeast1.run.app/login?auth_failed=true&error="
-                                            + exception.getMessage());
+                                    // frontendRedirectBaseUrl プロパティを使用
+                                    frontendRedirectBaseUrl + "/login?auth_failed=true&error=" + encodedErrorMessage);
                         }))
                 .build();
     }
@@ -141,23 +151,22 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // @Bean
-    // public PasswordEncoder passwordEncoder() {
-    // System.out.println("PasswordEncoder Bean initialized");
-    // return new BCryptPasswordEncoder();
-    // }
-
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // http://localhost:3000 を許可オリジンに追加しました。
+        // フロントエンド開発で一般的に使用されるため、これがないとCORSエラーが発生します。
         configuration.setAllowedOrigins(List.of(
                 "https://my-frontimage-14467698004.asia-northeast1.run.app",
-                "http://localhost:8081"));
+                "http://localhost:8081",
+                "http://localhost:3000" // ここに http://localhost:3000 を追加
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+        logger.info("CORS設定を初期化しました。許可されるオリジン: {}", configuration.getAllowedOrigins());
         return source;
     }
 
@@ -187,22 +196,33 @@ public class SecurityConfig {
     @Bean
     public AuthenticationSuccessHandler authenticationSuccessHandler() {
         return (request, response, authentication) -> {
-            OAuth2AuthenticationToken oauth2Token = (OAuth2AuthenticationToken) authentication;
-            OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
+            // Googleログインの人かチェック。
+            if (!(authentication instanceof OAuth2AuthenticationToken)) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                return;
+            }
 
-            // Googleのメールアドレスをユーザー名として利用し、既存のCustomUserDetailsServiceでUserDetailsをロード
-            String username = oauth2User.getAttribute("email");
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+            // GoogleのID（番号）をもらうよ。
+            String googleId = ((OAuth2User) authentication.getPrincipal()).getName();
 
-            // JWTトークンを生成
-            // String jwt = jwtTokenProvider.generateToken(userDetails);
-            String jwt = jwtTokenProvider.generateToken(authentication);
+            // GoogleのIDから、Googleのログイン情報（GoogleAuthToken）を見つけるよ。
+            // これがないと、どのAppUserに紐づくか分からないよ。
+            GoogleAuthToken googleAuthToken = googleAuthTokenRepository.findByGoogleSubId(googleId)
+                    .orElseThrow(() -> new IllegalStateException("Googleログイン情報が見つかりません。"));
 
-            // フロントエンドにリダイレクトし、JWTトークンをURLパラメータで渡す
-            // 例: http://localhost:3000/roadmap?jwt=YOUR_JWT_TOKEN
-            // セキュリティのため、本番環境ではHTTPSが必須です。
-            String frontendRedirectUrl = "https://my-frontimage-14467698004.asia-northeast1.run.app" + jwt; // フロントエンド
-            response.sendRedirect(frontendRedirectUrl);
+            // Googleのログイン情報から、アプリのユーザーのIDをもらうよ。
+            Long appUserId = googleAuthToken.getAppUserId();
+
+            // アプリのユーザーIDを使って、アプリのユーザー（AppUser）を見つけるよ。
+            // これがないと、UserDetailsをロードできないよ。
+            AppUser appUser = appUserRepository.findById(appUserId)
+                    .orElseThrow(() -> new IllegalStateException("アプリのユーザーが見つかりません。"));
+
+            String secretPass = jwtTokenProvider.generateToken(authentication);
+
+            // 「秘密のパス」を持って、ウェブサイトの別の場所へ行ってもらうよ。
+            String goToUrl = "https://my-frontimage-14467698004.asia-northeast1.run.app/callback?token=" + secretPass;
+            response.sendRedirect(goToUrl);
         };
     }
 }
