@@ -1,23 +1,25 @@
 package com.example.google.google_hackathon.service;
 
-import com.example.google.google_hackathon.entity.AppUser;
 import com.example.google.google_hackathon.entity.GoogleAuthToken;
 import com.example.google.google_hackathon.repository.AppUserRepository;
 import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.auth.oauth2.BearerToken;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException; // ★追加: GoogleJsonResponseException をインポート
+import com.google.api.client.auth.oauth2.TokenResponse; // これはrefreshToken()の戻り値とは直接関係ないが、関連クラスとして残す
+import com.google.api.client.auth.oauth2.TokenErrorResponse; // 同上
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential; // ★重要: これを使用
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.Events;
 import com.google.api.services.calendar.model.EventDateTime;
+import com.google.api.services.calendar.model.Events;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +30,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.Instant;
-import java.sql.Timestamp; // Timestamp クラスの import を追加 (LocalDateTime -> DateTime 変換用)
+import java.util.Optional;
+
+// import com.google.api.client.auth.oauth2.CredentialRefreshListener; // ★削除: このリスナーはGoogleCredentialには直接セットできない
 
 /**
  * Google Calendar API と連携するためのサービスです。
@@ -44,9 +48,20 @@ public class GoogleCalendarService {
     private final GoogleAuthTokenRepository googleAuthTokenRepository;
     private final ObjectMapper objectMapper;
 
-    // コンストラクタ
+    @Value("${spring.security.oauth2.client.registration.google.client-id}")
+    private String googleClientId;
+
+    @Value("${spring.security.oauth2.client.registration.google.client-secret}")
+    private String googleClientSecret;
+
+    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
+    private String googleRedirectUri;
+
+    private static final long FIVE_MINUTES_IN_MILLIS = 5 * 60 * 1000;
+
     public GoogleCalendarService(AppUserRepository appUserRepository,
-            GoogleAuthTokenRepository googleAuthTokenRepository, ObjectMapper objectMapper) {
+            GoogleAuthTokenRepository googleAuthTokenRepository,
+            ObjectMapper objectMapper) {
         this.appUserRepository = appUserRepository;
         this.googleAuthTokenRepository = googleAuthTokenRepository;
         this.objectMapper = objectMapper;
@@ -54,35 +69,125 @@ public class GoogleCalendarService {
 
     /**
      * 認証情報から Google Calendar API を使うための Credential を作って返すよ。
+     * ここでは、SecurityContextから取得したユーザーIDを使ってDBからトークンを取得するよ。
      *
-     * @param authentication 認証情報
+     * @param authentication 認証情報 (JWTによって認証されたユーザーの情報)
      * @return Google Calendar API を使うための Credential
-     * @throws IllegalStateException ユーザーやトークンが見つからない場合
+     * @throws IllegalStateException    ユーザーやトークンが見つからない場合、またはトークンが無効な場合
+     * @throws IOException              HTTP通信エラーなど
+     * @throws GeneralSecurityException セキュリティ関連のエラー
      */
-    private Credential getCredential(Authentication authentication) {
-        if (!(authentication instanceof OAuth2AuthenticationToken)) {
-            logger.error("AuthenticationオブジェクトがOAuth2AuthenticationTokenではありません。JWT認証または他の認証タイプが想定されています。");
-            throw new IllegalStateException("Google OAuth2認証ではないため、処理できません。");
-        }
-
-        String googleSubId = ((OAuth2User) authentication.getPrincipal()).getName();
+    private Credential getCredential(Authentication authentication) throws IOException, GeneralSecurityException {
+        String googleSubId = authentication.getName();
         logger.debug("Credential取得中。Google Sub ID: {}", googleSubId);
 
-        GoogleAuthToken googleAuthToken = googleAuthTokenRepository.findByGoogleSubId(googleSubId)
-                .orElseThrow(() -> {
-                    logger.error("重大なデータ不整合: GoogleAuthTokenが見つからない。Google ID: {}", googleSubId);
-                    return new IllegalStateException("Googleログイン情報が見つかりません。再ログインを試してください。");
-                });
+        Optional<GoogleAuthToken> optionalAuthToken = googleAuthTokenRepository.findByGoogleSubId(googleSubId);
 
+        if (optionalAuthToken.isEmpty()) {
+            logger.error("重大なデータ不整合: GoogleAuthTokenが見つからない。Google ID: {}", googleSubId);
+            throw new IllegalStateException("Googleログイン情報が見つかりません。再ログインを試してください。");
+        }
+
+        GoogleAuthToken googleAuthToken = optionalAuthToken.get();
         String accessToken = googleAuthToken.getAccessToken();
+        String refreshToken = googleAuthToken.getRefreshToken();
+
+        ZoneId tokenZoneId = ZoneId.systemDefault(); // または ZoneId.of("Asia/Tokyo");
+        Long expiresAtMillis = googleAuthToken.getExpiryDate().atZone(tokenZoneId).toInstant().toEpochMilli();
+
         if (accessToken == null || accessToken.isEmpty()) {
             logger.error("アクセストークンがGoogleAuthToken (ID: {}) から見つからない、または空です。", googleAuthToken.getId());
             throw new IllegalStateException("Googleアクセストークンが見つかりません。");
         }
-        logger.debug("アクセストークンを取得しました。");
 
-        return new Credential(BearerToken.authorizationHeaderAccessMethod())
-                .setAccessToken(accessToken);
+        GoogleCredential credential = new GoogleCredential.Builder()
+                .setTransport(GoogleNetHttpTransport.newTrustedTransport())
+                .setJsonFactory(JSON_FACTORY)
+                .setClientSecrets(googleClientId, googleClientSecret)
+                .build()
+                .setAccessToken(accessToken)
+                .setRefreshToken(refreshToken)
+                .setExpirationTimeMilliseconds(expiresAtMillis);
+
+        // setExpiresInSeconds はGoogleCredentialが自動リフレッシュを判断するために内部的に使用しますが、
+        // 明示的に設定する必要はありません。GoogleCredentialのexpirationTimeMillisecondsから自動的に計算されます。
+        // long remainingSeconds = (expiresAtMillis - System.currentTimeMillis()) /
+        // 1000;
+        // credential.setExpiresInSeconds(Math.max(0, remainingSeconds));
+
+        // ★削除: GoogleCredential には setRefreshListeners メソッドは存在しません。
+        // credential.setRefreshListeners(java.util.Collections.singleton(new
+        // CredentialRefreshListener() {
+        // @Override
+        // public void onTokenResponse(Credential credential, TokenResponse
+        // tokenResponse) throws IOException {
+        // logger.info("GoogleCredentialがアクセストークンをリフレッシュしました。DBを更新します。");
+        // googleAuthToken.setAccessToken(credential.getAccessToken());
+        // LocalDateTime newExpiryDate =
+        // Instant.ofEpochMilli(credential.getExpirationTimeMilliseconds())
+        // .atZone(tokenZoneId)
+        // .toLocalDateTime();
+        // googleAuthToken.setExpiryDate(newExpiryDate);
+        // if (credential.getRefreshToken() != null &&
+        // !credential.getRefreshToken().isEmpty()) {
+        // googleAuthToken.setRefreshToken(credential.getRefreshToken());
+        // }
+        // googleAuthTokenRepository.save(googleAuthToken);
+        // logger.info("データベースのGoogleAuthTokenを更新しました。新しい有効期限: {}", newExpiryDate);
+        // }
+        // @Override
+        // public void onTokenErrorResponse(Credential credential, TokenErrorResponse
+        // tokenErrorResponse) throws IOException {
+        // logger.error("GoogleCredentialがアクセストークンのリフレッシュに失敗しました: {}",
+        // tokenErrorResponse.getErrorDescription());
+        // throw new IOException("アクセストークンのリフレッシュに失敗しました: " +
+        // tokenErrorResponse.getErrorDescription());
+        // }
+        // }));
+
+        // ★修正: ここで明示的にrefreshToken()を呼び出し、その結果を基にDBを更新する
+        if (credential.getRefreshToken() != null
+                && (System.currentTimeMillis() + FIVE_MINUTES_IN_MILLIS > credential.getExpirationTimeMilliseconds())) {
+            logger.info("アクセストークンが期限切れ、または期限が近い ({}) です。リフレッシュを試みます。",
+                    Instant.ofEpochMilli(credential.getExpirationTimeMilliseconds()).atZone(tokenZoneId)
+                            .toLocalDateTime());
+            try {
+                boolean refreshed = credential.refreshToken(); // リフレッシュを試みる
+                if (refreshed) {
+                    logger.info("GoogleCredential.refreshToken() でトークンをリフレッシュしました。DBを更新します。");
+                    // リフレッシュ成功後、Credentialオブジェクト自身が新しいトークン情報を持つので、それをDBに保存
+                    googleAuthToken.setAccessToken(credential.getAccessToken());
+                    // 新しい有効期限をLocalDateTimeに変換して設定
+                    LocalDateTime newExpiryDate = Instant.ofEpochMilli(credential.getExpirationTimeMilliseconds())
+                            .atZone(tokenZoneId) // 同じタイムゾーンを使用
+                            .toLocalDateTime();
+                    googleAuthToken.setExpiryDate(newExpiryDate);
+                    // リフレッシュトークンが更新された場合（通常は初回のみ）、それも保存
+                    if (credential.getRefreshToken() != null && !credential.getRefreshToken().isEmpty() &&
+                            !credential.getRefreshToken().equals(googleAuthToken.getRefreshToken())) {
+                        googleAuthToken.setRefreshToken(credential.getRefreshToken());
+                    }
+                    googleAuthTokenRepository.save(googleAuthToken);
+                    logger.info("データベースのGoogleAuthTokenを更新しました。新しい有効期限: {}", newExpiryDate);
+                } else {
+                    logger.warn("GoogleCredential.refreshToken() がリフレッシュに失敗したか、不要でした。リフレッシュトークン: {}",
+                            refreshToken != null ? "あり" : "なし");
+                    // ここで refreshed が false の場合でも、通常はリフレッシュ不要と判断されたケース。
+                    // しかし、期限切れでリフレッシュトークンも無い場合はエラーとする。
+                    if (refreshToken == null || refreshToken.isEmpty()) {
+                        throw new IllegalStateException("アクセストークンが期限切れで、リフレッシュトークンがありません。再ログインが必要です。");
+                    }
+                }
+            } catch (IOException e) {
+                logger.error("GoogleCredential.refreshToken() の呼び出し中にエラーが発生しました: {}", e.getMessage());
+                throw new IllegalStateException("Google認証トークンのリフレッシュに失敗しました。再ログインを試してください。", e);
+            }
+        } else {
+            logger.debug("アクセストークンは有効期限内か、リフレッシュトークンがありません。リフレッシュは不要です。");
+        }
+
+        logger.debug("Credentialの構築と必要に応じたリフレッシュを完了しました。");
+        return credential;
     }
 
     /**
@@ -103,10 +208,10 @@ public class GoogleCalendarService {
             Authentication authentication,
             String summary, String description,
             LocalDateTime startDateTime, LocalDateTime endDateTime, String timeZone)
-            throws IOException, GeneralSecurityException, GoogleAuthException { // ★修正: GoogleAuthException を追加
+            throws IOException, GeneralSecurityException, GoogleAuthException {
         logger.info("Googleカレンダーイベント作成を開始します。Summary: {}", summary);
 
-        try { // ★追加: API呼び出し全体をtry-catchで囲む
+        try {
             Credential credential = getCredential(authentication);
 
             Calendar service = new Calendar.Builder(
@@ -116,8 +221,6 @@ public class GoogleCalendarService {
                     .setApplicationName("Google Hackathon App")
                     .build();
 
-            // LocalDateTime を com.google.api.client.util.DateTime に変換
-            // ZoneId.of(timeZone) を使って ZonedDateTime を経由し、Instant からミリ秒を取得
             com.google.api.client.util.DateTime start = new com.google.api.client.util.DateTime(
                     ZonedDateTime.of(startDateTime, ZoneId.of(timeZone)).toInstant().toEpochMilli());
             com.google.api.client.util.DateTime end = new com.google.api.client.util.DateTime(
@@ -126,39 +229,34 @@ public class GoogleCalendarService {
             Event event = new Event()
                     .setSummary(summary)
                     .setDescription(description)
-                    .setStart(new EventDateTime().setDateTime(start).setTimeZone(timeZone)) // EventDateTime の設定
-                    .setEnd(new EventDateTime().setDateTime(end).setTimeZone(timeZone)); // EventDateTime の設定
+                    .setStart(new EventDateTime().setDateTime(start).setTimeZone(timeZone))
+                    .setEnd(new EventDateTime().setDateTime(end).setTimeZone(timeZone));
 
             String calendarId = "primary";
-            logger.info("Google Calendar API を呼び出し中... カレンダーID: {}, イベント概要: {}", calendarId, summary); // ★追加ログ
+            logger.info("Google Calendar API を呼び出し中... カレンダーID: {}, イベント概要: {}", calendarId, summary);
             Event createdEvent = service.events().insert(calendarId, event).execute();
-            logger.info("Google Calendar API 呼び出し完了。Created Event ID: {}", createdEvent.getId()); // ★追加ログ
+            logger.info("Google Calendar API 呼び出し完了。Created Event ID: {}", createdEvent.getId());
 
             return objectMapper.convertValue(createdEvent, JsonNode.class);
 
-        } catch (GoogleJsonResponseException e) { // ★追加: Google APIからのJSONレスポンスエラーをキャッチ
+        } catch (GoogleJsonResponseException e) {
             logger.error("Google Calendar API エラーレスポンス (JSON): {}", e.getDetails().getMessage(), e);
             if (e.getStatusCode() == 401 || e.getStatusCode() == 403) {
-                // 認証エラーの場合、GoogleAuthExceptionをスローしてControllerでリダイレクトを処理
                 logger.warn("Google Calendar APIからの認証/権限エラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage());
-                // getGoogleAuthUrl() は、別途、認証フローを開始するためのURLを返すように実装されている必要があります。
-                // 通常は、OAuth2クライアントの認可URIを生成する処理になります。
                 throw new GoogleAuthException("Google Calendar APIへのアクセスに認証が必要です", getGoogleAuthUrl());
             } else {
-                // その他のGoogle APIエラーはそのままIOExceptionとしてスロー
                 logger.error("Google Calendar APIからの予期せぬエラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage(),
                         e);
                 throw new IOException("Google Calendar APIエラー: " + e.getDetails().getMessage(), e);
             }
         } catch (IOException e) {
-            logger.error("Google Calendar API呼び出し中のI/Oエラー: {}", e.getMessage(), e); // ★追加ログ
+            logger.error("Google Calendar API呼び出し中のI/Oエラー: {}", e.getMessage(), e);
             throw e;
         } catch (GeneralSecurityException e) {
-            logger.error("Google Calendar API認証情報のセキュリティエラー: {}", e.getMessage(), e); // ★追加ログ
+            logger.error("Google Calendar API認証情報のセキュリティエラー: {}", e.getMessage(), e);
             throw e;
-        } catch (IllegalStateException e) { // getCredentialで発生するIllegalStateExceptionをキャッチ
+        } catch (IllegalStateException e) {
             logger.error("Credential取得エラー: {}", e.getMessage(), e);
-            // ここでGoogleAuthExceptionをスローして、フロントエンドに認証を促す
             throw new GoogleAuthException("認証情報が見つからない、または不正です。", getGoogleAuthUrl());
         }
     }
@@ -178,10 +276,10 @@ public class GoogleCalendarService {
     public JsonNode listGoogleCalendarEvents(
             Authentication authentication,
             LocalDateTime timeMin, LocalDateTime timeMax, String timeZone)
-            throws IOException, GeneralSecurityException, GoogleAuthException { // ★修正: GoogleAuthException を追加
+            throws IOException, GeneralSecurityException, GoogleAuthException {
         logger.info("Googleカレンダーイベント一覧取得を開始します。TimeMin: {}, TimeMax: {}", timeMin, timeMax);
 
-        try { // ★追加: API呼び出し全体をtry-catchで囲む
+        try {
             Credential credential = getCredential(authentication);
 
             Calendar service = new Calendar.Builder(
@@ -197,20 +295,20 @@ public class GoogleCalendarService {
                     ZonedDateTime.of(timeMax, ZoneId.of(timeZone)).toInstant().toEpochMilli());
 
             String calendarId = "primary";
-            logger.info("Google Calendar API (List) を呼び出し中... カレンダーID: {}", calendarId); // ★追加ログ
+            logger.info("Google Calendar API (List) を呼び出し中... カレンダーID: {}", calendarId);
             Events events = service.events().list(calendarId)
                     .setTimeMin(minDateTime)
                     .setTimeMax(maxDateTime)
                     .setSingleEvents(true)
                     .setOrderBy("startTime")
-                    .setQ("event") // 'event'という単語を含むイベントを検索する例
+                    .setQ("event")
                     .execute();
             logger.info("Google Calendar API (List) 呼び出し完了。{} 件のイベントが見つかりました。",
-                    events.getItems() != null ? events.getItems().size() : 0); // ★追加ログ
+                    events.getItems() != null ? events.getItems().size() : 0);
 
             return objectMapper.convertValue(events, JsonNode.class);
 
-        } catch (GoogleJsonResponseException e) { // ★追加: Google APIからのJSONレスポンスエラーをキャッチ
+        } catch (GoogleJsonResponseException e) {
             logger.error("Google Calendar API エラーレスポンス (JSON): {}", e.getDetails().getMessage(), e);
             if (e.getStatusCode() == 401 || e.getStatusCode() == 403) {
                 logger.warn("Google Calendar APIからの認証/権限エラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage());
@@ -221,12 +319,12 @@ public class GoogleCalendarService {
                 throw new IOException("Google Calendar APIエラー: " + e.getDetails().getMessage(), e);
             }
         } catch (IOException e) {
-            logger.error("Google Calendar API呼び出し中のI/Oエラー: {}", e.getMessage(), e); // ★追加ログ
+            logger.error("Google Calendar API呼び出し中のI/Oエラー: {}", e.getMessage(), e);
             throw e;
         } catch (GeneralSecurityException e) {
-            logger.error("Google Calendar API認証情報のセキュリティエラー: {}", e.getMessage(), e); // ★追加ログ
+            logger.error("Google Calendar API認証情報のセキュリティエラー: {}", e.getMessage(), e);
             throw e;
-        } catch (IllegalStateException e) { // getCredentialで発生するIllegalStateExceptionをキャッチ
+        } catch (IllegalStateException e) {
             logger.error("Credential取得エラー: {}", e.getMessage(), e);
             throw new GoogleAuthException("認証情報が見つからない、または不正です。", getGoogleAuthUrl());
         }
@@ -234,25 +332,22 @@ public class GoogleCalendarService {
 
     /**
      * Google認証同意画面へのリダイレクトURLを生成するメソッド。
-     * 
+     *
      * @return Google認証同意画面へのURL
      */
     private String getGoogleAuthUrl() {
         logger.warn("getGoogleAuthUrl() メソッドが未実装です。正しい認証URLを返すようにしてください。");
 
-        final String CLIENT_ID = "14467698004-st2mnmp5t5ebt3nbj1kkgvamj7f5jps5.apps.googleusercontent.com";
-        final String REDIRECT_URI = "https://my-image-14467698004.asia-northeast1.run.app/oauth2/callback";
-        final String SCOPE = "openid profile email https://www.googleapis.com/auth/calendar.events";
-
         try {
             return "https://accounts.google.com/o/oauth2/auth?" +
-                    "client_id=" + CLIENT_ID + "&" +
-                    "redirect_uri=" + java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8") + "&" + // ここはURLエンコードする
+                    "client_id=" + googleClientId + "&" +
+                    "redirect_uri=" + java.net.URLEncoder.encode(googleRedirectUri, "UTF-8") + "&" +
                     "response_type=code&" +
-                    "scope=" + java.net.URLEncoder.encode(SCOPE, "UTF-8"); // ここもURLエンコードする
+                    "scope=" + java.net.URLEncoder
+                            .encode("openid profile email https://www.googleapis.com/auth/calendar.events", "UTF-8");
         } catch (java.io.UnsupportedEncodingException e) {
             logger.error("URLエンコーディングに失敗しました: {}", e.getMessage());
-            return null; // または適切なエラーハンドリング
+            return null;
         }
     }
 }
