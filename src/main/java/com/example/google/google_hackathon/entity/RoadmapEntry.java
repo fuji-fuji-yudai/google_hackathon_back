@@ -2,6 +2,7 @@ package com.example.google.google_hackathon.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Entity
 @Table(name = "roadmap_entries", schema = "public")
@@ -32,11 +33,21 @@ public class RoadmapEntry {
     @Column(name = "end_year", nullable = false)
     private Integer endYear;
 
+    // createdAtフィールド: データベースのTIMESTAMP型と、JSONシリアライズの形式を定義
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // ★追加: JSON出力フォーマットを指定
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    // updatedAtフィールド: データベースのTIMESTAMP型と、JSONシリアライズの形式を定義
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // ★追加: JSON出力フォーマットを指定
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // @Column(name = "created_at", nullable = false)
+    // private LocalDateTime createdAt;
+
+    // @Column(name = "updated_at", nullable = false)
+    // private LocalDateTime updatedAt;
 
     public RoadmapEntry() {
         this.createdAt = LocalDateTime.now();

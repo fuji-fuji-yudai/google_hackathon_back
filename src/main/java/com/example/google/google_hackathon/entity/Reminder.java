@@ -7,7 +7,8 @@ import lombok.AllArgsConstructor; // 全フィールドのコンストラクタ�
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.LocalDateTime; // ★追加: LocalDateTimeをインポート
+import java.time.LocalDateTime; //LocalDateTimeをインポート
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Entity
 @Table(name = "reminders", schema = "public")
@@ -30,21 +31,27 @@ public class Reminder {
     @Column(name = "description", length = 500) // descriptionはnullを許容する (nullable = trueは省略可)
     private String description; // 例: 詳細説明
 
+    // remindDateフィールド: 日付のみの形式
+    @JsonFormat(pattern = "yyyy-MM-dd") // JSON出力フォーマットを指定
     @Column(name = "remind_date", nullable = false)
-    private LocalDate remindDate; // 例: 通知日
+    private LocalDate remindDate;
 
-    @Column(name = "remind_time") // 通知時間が必ずしも必須ではない場合を考慮しnullable=true
-    private LocalTime remindTime; // 例: 通知時間
+    // remindTimeフィールド: 時間のみの形式
+    @JsonFormat(pattern = "HH:mm:ss") // JSON出力フォーマットを指定
+    @Column(name = "remind_time")
+    private LocalTime remindTime;
 
     // status を isCompleted に変更
     @Column(name = "is_completed", nullable = false)
     private Boolean isCompleted = false; // 例: リマインダーが完了したかどうか
 
-    // 作成日時
+    // createdAtフィールド: 日時を含む形式
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // ★追加: JSON出力フォーマットを指定
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // 更新日時
+    // updatedAtフィールド: 日時を含む形式
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // ★追加: JSON出力フォーマットを指定
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
