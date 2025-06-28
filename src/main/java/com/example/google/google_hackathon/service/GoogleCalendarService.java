@@ -40,50 +40,49 @@ public class GoogleCalendarService {
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final NetHttpTransport HTTP_TRANSPORT = new NetHttpTransport();
 
-    // サービスアカウントキーが格納されているシークレットのID
-    @Value("${google.service-account.secret-id}")
+    // サービスアカウントキーが格納されているシークレットのID (Cloud Runの環境変数名に合わせる)
+    @Value("${GOOGLECALENDAR_SERVICE_ACCOUNT_SECRET_ID}")
     private String serviceAccountSecretId;
 
-    // 委任ユーザーのメールアドレスが格納されているシークレットのID
-    @Value("${google.service-account.user-email}") // 新しいプロパティ名
-    private String delegateEmailSecretId; // 新しいフィールド
+    // 委任ユーザーのメールアドレス (Cloud Runの環境変数名に合わせ、Secret Managerを経由しないので直接値を受け取る)
+    @Value("${GOOGLECALENDAR_SERVICE_ACCOUNT_USER_EMAIL}")
+    private String delegatedUserEmail;
 
     private final ObjectMapper objectMapper;
     private byte[] serviceAccountKeyBytes; // サービスアカウントキーのバイト配列
-    private String delegatedUserEmail; // Secret Managerから取得する委任ユーザーのメールアドレス
+
+    // 注意: プロジェクトIDは環境変数から取得することも検討してください
+    // @Value("${GOOGLE_CLOUD_PROJECT}")
+    // private String projectId;
 
     public GoogleCalendarService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
     /**
-     * Beanの初期化時に、サービスアカウントキーと委任ユーザーのメールアドレスを
-     * それぞれのSecret Managerから取得し、メモリにロードします。
+     * Beanの初期化時に、サービスアカウントキーをSecret Managerから取得し、メモリにロードします。
+     * 委任ユーザーのメールアドレスは@Valueで直接注入されるため、ここでは取得しません。
      */
     @PostConstruct
     public void init() throws IOException {
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
             // サービスアカウントキーの取得
             logger.info("サービスアカウントキーをSecret Managerから取得中。Secret ID: {}", serviceAccountSecretId);
+
             SecretVersionName serviceAccountKeyName = SecretVersionName.newBuilder()
-                    .setProject("nomadic-bison-459812-a8") // あなたのプロジェクトIDに置き換えてください
-                    .setSecret(serviceAccountSecretId)
+                    // ここに実際のGoogle CloudプロジェクトIDを記述します
+                    // 環境変数から取得する場合は上記コメントアウトしたprojectIdフィールドを使用
+                    .setProject("nomadic-bison-459812-a8")
+                    .setSecret(serviceAccountSecretId) // ここに "calendar-service-account-key" が入ることを期待
                     .setSecretVersion("latest")
                     .build();
+
             AccessSecretVersionResponse keyResponse = client.accessSecretVersion(serviceAccountKeyName);
             this.serviceAccountKeyBytes = keyResponse.getPayload().getData().toByteArray();
             logger.info("サービスアカウントキーを正常に取得しました。");
 
-            // 委任ユーザーのメールアドレスの取得
-            logger.info("委任ユーザーのメールアドレスをSecret Managerから取得中。Secret ID: {}", delegateEmailSecretId);
-            SecretVersionName delegateEmailName = SecretVersionName.newBuilder()
-                    .setProject("nomadic-bison-459812-a8") // あなたのプロジェクトIDに置き換えてください
-                    .setSecret(delegateEmailSecretId)
-                    .setSecretVersion("latest")
-                    .build();
-            AccessSecretVersionResponse emailResponse = client.accessSecretVersion(delegateEmailName);
-            this.delegatedUserEmail = emailResponse.getPayload().getData().toStringUtf8();
-            logger.info("委任ユーザーのメールアドレスを正常に取得しました: {}", delegatedUserEmail);
+            // 委任ユーザーのメールアドレスは@Valueで直接注入されるため、Secret Managerからの取得は不要
+            logger.info("委任ユーザーのメールアドレス (直接注入): {}", delegatedUserEmail);
 
         } catch (Exception e) {
             logger.error("Secret Managerからの認証情報取得中にエラーが発生しました: {}", e.getMessage(), e);
@@ -93,6 +92,11 @@ public class GoogleCalendarService {
 
     private Calendar getCalendarService(String userEmailToImpersonate) throws IOException, GeneralSecurityException {
         logger.info("Google Calendarサービスを初期化中。委任ユーザー: {}", userEmailToImpersonate);
+
+        // サービスアカウントキーのバイト配列がnullでないことを確認
+        if (serviceAccountKeyBytes == null) {
+            throw new IllegalStateException("Service account key bytes not loaded. init() method might have failed.");
+        }
 
         InputStream keyStream = new ByteArrayInputStream(serviceAccountKeyBytes);
 
@@ -116,18 +120,20 @@ public class GoogleCalendarService {
         logger.info("Googleカレンダーイベント作成を開始します。タイトル: {}, 開始: {}, 終了: {}, 参加者数: {}",
                 title, startDateTime, endDateTime, attendeeEmails != null ? attendeeEmails.size() : 0);
 
-        Calendar service = getCalendarService(delegatedUserEmail); // Secret Managerから取得したメールアドレスを使用
+        Calendar service = getCalendarService(delegatedUserEmail);
 
         Event event = new Event()
                 .setSummary(title)
                 .setDescription(description);
 
         List<EventAttendee> attendees = new ArrayList<>();
+        // 委任ユーザー自身も参加者として追加
         attendees.add(new EventAttendee().setEmail(delegatedUserEmail));
 
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
             for (String email : attendeeEmails) {
                 String trimmedEmail = email.trim();
+                // 委任ユーザーのメールアドレスが重複しないようにチェック
                 if (!trimmedEmail.isEmpty() && !trimmedEmail.equalsIgnoreCase(delegatedUserEmail)) {
                     attendees.add(new EventAttendee().setEmail(trimmedEmail));
                 }
@@ -147,7 +153,7 @@ public class GoogleCalendarService {
                 .setTimeZone(timeZone);
         event.setEnd(end);
 
-        String calendarId = "primary";
+        String calendarId = "primary"; // サービスアカウントがアクセスできるメインカレンダー
 
         try {
             Event createdEvent = service.events().insert(calendarId, event).setSendNotifications(true).execute();
