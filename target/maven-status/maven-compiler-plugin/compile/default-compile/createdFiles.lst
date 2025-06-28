@@ -3,7 +3,6 @@ com\example\google\google_hackathon\service\GoogleCalendarService.class
 com\example\google\google_hackathon\config\WebConfig.class
 com\example\google\google_hackathon\controller\ChatController.class
 com\example\google\google_hackathon\service\RoomService.class
-com\example\google\google_hackathon\config\PasswordEncoderConfig.class
 com\example\google\google_hackathon\controller\ExcelAnalyzerController.class
 com\example\google\google_hackathon\repository\RoadmapEntryRepository.class
 com\example\google\google_hackathon\config\model\ChatMessage.class
@@ -13,7 +12,6 @@ com\example\google\google_hackathon\dto\LoginRequest.class
 com\example\google\google_hackathon\service\CustomOAuth2UserService.class
 com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.class
 com\example\google\google_hackathon\dto\ReminderRequest.class
-com\example\google\google_hackathon\entity\GoogleAuthToken$GoogleAuthTokenBuilder.class
 com\example\google\google_hackathon\repository\FeedbackRepository.class
 com\example\google\google_hackathon\controller\RoadmapCategoryController.class
 com\example\google\google_hackathon\security\JwtTokenProvider.class
@@ -67,7 +65,6 @@ com\example\google\google_hackathon\repository\RoomRepository.class
 com\example\google\google_hackathon\service\VertexAIService.class
 com\example\google\google_hackathon\dto\RoomRequest.class
 com\example\google\google_hackathon\service\ChatMessageService.class
-com\example\google\google_hackathon\entity\GoogleAuthToken.class
 com\example\google\google_hackathon\service\ReflectionSummaryService.class
 com\example\google\google_hackathon\repository\ReflectionSummaryRepository.class
 com\example\google\google_hackathon\service\GoogleAuthException.class
@@ -80,7 +77,6 @@ com\example\google\google_hackathon\dto\TaskDto.class
 com\example\google\google_hackathon\controller\RoomController.class
 com\example\google\google_hackathon\dto\ReminderResponse.class
 com\example\google\google_hackathon\controller\LoginApiController.class
-com\example\google\google_hackathon\repository\GoogleAuthTokenRepository.class
 com\example\google\google_hackathon\dto\CalendarEventRequest.class
 com\example\google\google_hackathon\entity\ReflectionSummaryEntity.class
 com\example\google\google_hackathon\controller\ReflectionController.class

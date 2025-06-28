@@ -1,22 +1,25 @@
 package com.example.google.google_hackathon.service;
 
-import com.example.google.google_hackathon.entity.AppUser; // AppUserを使うために必要
-import com.example.google.google_hackathon.entity.GoogleAuthToken; // GoogleAuthTokenを使うために必要
-import com.example.google.google_hackathon.repository.AppUserRepository; // AppUserを探すために必要
-import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository; // GoogleAuthTokenを探すために必要
+// データベース関連のインポートは不要になります
+// import com.example.google.google_hackathon.entity.GoogleAuthToken;
+// import com.example.google.google_hackathon.repository.AppUserRepository;
+// import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository;
+
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper; // JsonNodeを扱うために必要
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.auth.oauth2.BearerToken; // BearerTokenCredentialBuilder の代わりに BearerToken を使用
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential; // GoogleCredentialを使用
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
-import com.google.api.services.calendar.model.EventDateTime; // イベント日時設定のために必要
-import org.springframework.security.core.Authentication; // 認証情報を取得するために必要
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken; // OAuth2AuthenticationToken を扱うために必要
-import org.springframework.security.oauth2.core.user.OAuth2User; // OAuth2User を扱うために必要
+
+// Authentication はコントローラーから渡されても、このサービスでは直接使用しない
+// import org.springframework.security.core.Authentication; 
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,175 +28,174 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime; // タイムゾーン付きの日時を扱うために必要
-import java.time.Instant; // 日時変換のために必要
+import java.time.ZonedDateTime;
+import java.util.Collections; // Collections.singletonList()用
 
 /**
  * Google Calendar API と連携するためのサービスです。
- * データベースに保存されたアクセストークンを使用して、Googleカレンダーのイベントを操作します。
+ * フロントエンドから提供される一時的なアクセストークンを使用して、Googleカレンダーのイベントを操作します。
+ * アクセストークンやリフレッシュトークンはデータベースに保存しません。
  */
 @Service
 public class GoogleCalendarService {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarService.class);
-    private static final GsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance(); // JSON処理用
+    private static final GsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
 
-    private final AppUserRepository appUserRepository; // AppUserを探す道具だよ
-    private final GoogleAuthTokenRepository googleAuthTokenRepository; // GoogleAuthTokenを探す道具だよ
-    private final ObjectMapper objectMapper; // JSONをいい感じに扱う道具だよ
+    private final ObjectMapper objectMapper;
 
-    // コンストラクタ: 必要な道具をもらうよ
-    public GoogleCalendarService(AppUserRepository appUserRepository,
-            GoogleAuthTokenRepository googleAuthTokenRepository, ObjectMapper objectMapper) {
-        this.appUserRepository = appUserRepository;
-        this.googleAuthTokenRepository = googleAuthTokenRepository;
+    // コンストラクタインジェクション (ObjectMapperのみ)
+    public GoogleCalendarService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
     /**
-     * 認証情報から Google Calendar API を使うための Credential を作って返すよ。
+     * Google Calendar に新しいイベントを作成します。
+     * アクセストークンは呼び出し元 (コントローラー) から直接渡されます。
      *
-     * @param authentication 認証情報
-     * @return Google Calendar API を使うための Credential
-     * @throws IllegalStateException ユーザーやトークンが見つからない場合
-     */
-    private Credential getCredential(Authentication authentication) {
-        // これからGoogleカレンダーを使うための「鍵」を準備するよ
-
-        // 認証情報がGoogleログインのものか確認
-        if (!(authentication instanceof OAuth2AuthenticationToken)) {
-            logger.error("AuthenticationオブジェクトがOAuth2AuthenticationTokenではありません。JWT認証または他の認証タイプが想定されています。");
-            throw new IllegalStateException("Google OAuth2認証ではないため、処理できません。");
-        }
-
-        // ログインしているGoogleユーザーのID（番号）をもらうよ
-        String googleSubId = ((OAuth2User) authentication.getPrincipal()).getName();
-        logger.debug("Credential取得中。Google Sub ID: {}", googleSubId);
-
-        // GoogleのIDから、Googleのログイン情報（GoogleAuthToken）を見つけるよ。
-        // これがないと、どのAppUserに紐づくか分からないし、アクセストークンも取れないよ。
-        GoogleAuthToken googleAuthToken = googleAuthTokenRepository.findByGoogleSubId(googleSubId)
-                .orElseThrow(() -> {
-                    logger.error("重大なデータ不整合: GoogleAuthTokenが見つからない。Google ID: {}", googleSubId);
-                    return new IllegalStateException("Googleログイン情報が見つかりません。再ログインを試してください。");
-                });
-
-        // データベースからアクセストークンをもらうよ
-        String accessToken = googleAuthToken.getAccessToken();
-        if (accessToken == null || accessToken.isEmpty()) {
-            logger.error("アクセストークンがGoogleAuthToken (ID: {}) から見つからない、または空です。", googleAuthToken.getId());
-            throw new IllegalStateException("Googleアクセストークンが見つかりません。");
-        }
-        logger.debug("アクセストークンを取得しました。");
-
-        // このアクセストークンを使って、Google APIに「これは本物だよ！」って伝えるためのCredentialを作るよ
-        return new Credential(BearerToken.authorizationHeaderAccessMethod())
-                .setAccessToken(accessToken);
-    }
-
-    /**
-     * Google Calendar に新しいイベントを作るよ。
-     *
-     * @param authentication ログインしている人の情報だよ
-     * @param summary        イベントの短い説明だよ
-     * @param description    イベントの詳しい説明だよ
-     * @param startDateTime  イベントが始まる日時だよ
-     * @param endDateTime    イベントが終わる日時だよ
-     * @param timeZone       イベントのタイムゾーンだよ (例: "Asia/Tokyo")
-     * @return 作ったイベントの情報（JSON形式）だよ
-     * @throws IOException              通信エラーがあったら
-     * @throws GeneralSecurityException 認証やセキュリティのエラーがあったら
+     * @param googleAccessToken Google API にアクセスするためのアクセストークン
+     * @param summary           イベントの短い説明
+     * @param description       イベントの詳しい説明
+     * @param startDateTime     イベントが始まる日時
+     * @param endDateTime       イベントが終わる日時
+     * @param timeZone          イベントのタイムゾーン (例: "Asia/Tokyo")
+     * @return 作成されたイベントの情報 (JSON形式)
+     * @throws IOException              通信エラーがあった場合
+     * @throws GeneralSecurityException セキュリティ関連のエラーがあった場合
+     * @throws GoogleAuthException      認証が必要な場合 (アクセストークンが無効な場合など)
      */
     public JsonNode createGoogleCalendarEvent(
-            Authentication authentication, // ★修正: authentication を受け取るようにしたよ
+            String googleAccessToken, // ★修正: Authentication から String に変更
             String summary, String description,
             LocalDateTime startDateTime, LocalDateTime endDateTime, String timeZone)
-            throws IOException, GeneralSecurityException {
+            throws IOException, GeneralSecurityException, GoogleAuthException {
         logger.info("Googleカレンダーイベント作成を開始します。Summary: {}", summary);
 
-        // Google APIを使うためのCredentialをもらうよ
-        Credential credential = getCredential(authentication);
+        try {
+            // ★修正: 受け取ったアクセストークンを使ってCredentialを直接構築
+            Credential credential = new GoogleCredential.Builder()
+                    .setTransport(GoogleNetHttpTransport.newTrustedTransport())
+                    .setJsonFactory(JSON_FACTORY)
+                    .build()
+                    .setAccessToken(googleAccessToken); // フロントエンドから渡されたアクセストークンを設定
 
-        // Google Calendar と話すための特別な道具（サービス）を作るよ
-        Calendar service = new Calendar.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(), // 安全な通信方法を使うよ
-                JSON_FACTORY, // JSONを扱う道具だよ
-                credential) // 秘密の鍵（Credential）を使うよ
-                .setApplicationName("Google Hackathon App") // あなたのアプリの名前だよ
-                .build();
+            Calendar service = new Calendar.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    JSON_FACTORY,
+                    credential)
+                    .setApplicationName("Google Hackathon App")
+                    .build();
 
-        // イベントの開始日時と終了日時を設定するよ
-        EventDateTime start = new EventDateTime()
-                .setDateTime(new com.google.api.client.util.DateTime(
-                        ZonedDateTime.of(startDateTime, ZoneId.of(timeZone)).toInstant().toEpochMilli()))
-                .setTimeZone(timeZone);
-        EventDateTime end = new EventDateTime()
-                .setDateTime(new com.google.api.client.util.DateTime(
-                        ZonedDateTime.of(endDateTime, ZoneId.of(timeZone)).toInstant().toEpochMilli()))
-                .setTimeZone(timeZone);
+            com.google.api.client.util.DateTime start = new com.google.api.client.util.DateTime(
+                    ZonedDateTime.of(startDateTime, ZoneId.of(timeZone)).toInstant().toEpochMilli());
+            com.google.api.client.util.DateTime end = new com.google.api.client.util.DateTime(
+                    ZonedDateTime.of(endDateTime, ZoneId.of(timeZone)).toInstant().toEpochMilli());
 
-        // イベントの情報を作るよ
-        Event event = new Event()
-                .setSummary(summary)
-                .setDescription(description)
-                .setStart(start)
-                .setEnd(end);
+            Event event = new Event()
+                    .setSummary(summary)
+                    .setDescription(description)
+                    .setStart(new EventDateTime().setDateTime(start).setTimeZone(timeZone))
+                    .setEnd(new EventDateTime().setDateTime(end).setTimeZone(timeZone));
 
-        // イベントをカレンダーに追加するよ（"primary"は自分のメインカレンダーだよ）
-        String calendarId = "primary";
-        Event createdEvent = service.events().insert(calendarId, event).execute();
+            String calendarId = "primary";
+            logger.info("Google Calendar API を呼び出し中... カレンダーID: {}, イベント概要: {}", calendarId, summary);
+            Event createdEvent = service.events().insert(calendarId, event).execute();
+            logger.info("Google Calendar API 呼び出し完了。Created Event ID: {}", createdEvent.getId());
 
-        logger.info("Googleカレンダーイベントを正常に作成しました。ID: {}", createdEvent.getId());
-        return objectMapper.convertValue(createdEvent, JsonNode.class); // 作ったイベントの情報をJSONで返すよ
+            return objectMapper.convertValue(createdEvent, JsonNode.class);
+
+        } catch (GoogleJsonResponseException e) {
+            logger.error("Google Calendar API エラーレスポンス (JSON): {}", e.getDetails().getMessage(), e);
+            if (e.getStatusCode() == 401 || e.getStatusCode() == 403) {
+                logger.warn("Google Calendar APIからの認証/権限エラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage());
+                // フロントエンドに再認証を促すエラーを投げる
+                throw new GoogleAuthException("Google Calendar APIへのアクセスに認証が必要です。再ログインしてください。", null);
+            } else {
+                logger.error("Google Calendar APIからの予期せぬエラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage(),
+                        e);
+                throw new IOException("Google Calendar APIエラー: " + e.getDetails().getMessage(), e);
+            }
+        } catch (IOException e) {
+            logger.error("Google Calendar API呼び出し中のI/Oエラー: {}", e.getMessage(), e);
+            throw e;
+        } catch (GeneralSecurityException e) {
+            logger.error("Google Calendar API認証情報のセキュリティエラー: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
-     * Google Calendar のイベント一覧をもらうよ。
+     * Google Calendar のイベント一覧を取得します。
+     * アクセストークンは呼び出し元 (コントローラー) から直接渡されます。
      *
-     * @param authentication ログインしている人の情報だよ
-     * @param timeMin        イベントの開始日時（これ以降）だよ
-     * @param timeMax        イベントの終了日時（これ以前）だよ
-     * @param timeZone       タイムゾーンだよ
-     * @return イベント一覧の情報（JSON形式）だよ
-     * @throws IOException              通信エラーがあったら
-     * @throws GeneralSecurityException 認証やセキュリティのエラーがあったら
+     * @param googleAccessToken Google API にアクセスするためのアクセストークン
+     * @param timeMin           イベントの開始日時（これ以降）
+     * @param timeMax           イベントの終了日時（これ以前）
+     * @param timeZone          タイムゾーン
+     * @return イベント一覧の情報 (JSON形式)
+     * @throws IOException              通信エラーがあった場合
+     * @throws GeneralSecurityException セキュリティ関連のエラーがあった場合
+     * @throws GoogleAuthException      認証が必要な場合 (アクセストークンが無効な場合など)
      */
     public JsonNode listGoogleCalendarEvents(
-            Authentication authentication, // ★修正: authentication を受け取るようにしたよ
+            String googleAccessToken, // ★修正: Authentication から String に変更
             LocalDateTime timeMin, LocalDateTime timeMax, String timeZone)
-            throws IOException, GeneralSecurityException {
+            throws IOException, GeneralSecurityException, GoogleAuthException {
         logger.info("Googleカレンダーイベント一覧取得を開始します。TimeMin: {}, TimeMax: {}", timeMin, timeMax);
 
-        // Google APIを使うためのCredentialをもらうよ
-        Credential credential = getCredential(authentication);
+        try {
+            // ★修正: 受け取ったアクセストークンを使ってCredentialを直接構築
+            Credential credential = new GoogleCredential.Builder()
+                    .setTransport(GoogleNetHttpTransport.newTrustedTransport())
+                    .setJsonFactory(JSON_FACTORY)
+                    .build()
+                    .setAccessToken(googleAccessToken); // フロントエンドから渡されたアクセストークンを設定
 
-        // Google Calendar と話すための特別な道具（サービス）を作るよ
-        Calendar service = new Calendar.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JSON_FACTORY,
-                credential)
-                .setApplicationName("Google Hackathon App")
-                .build();
+            Calendar service = new Calendar.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    JSON_FACTORY,
+                    credential)
+                    .setApplicationName("Google Hackathon App")
+                    .build();
 
-        // イベントを探す期間を設定するよ
-        // LocalDateTimeをZonedDateTimeに変換し、Instantを経由してcom.google.api.client.util.DateTimeに変換
-        com.google.api.client.util.DateTime minDateTime = new com.google.api.client.util.DateTime(
-                ZonedDateTime.of(timeMin, ZoneId.of(timeZone)).toInstant().toEpochMilli());
-        com.google.api.client.util.DateTime maxDateTime = new com.google.api.client.util.DateTime(
-                ZonedDateTime.of(timeMax, ZoneId.of(timeZone)).toInstant().toEpochMilli());
+            com.google.api.client.util.DateTime minDateTime = new com.google.api.client.util.DateTime(
+                    ZonedDateTime.of(timeMin, ZoneId.of(timeZone)).toInstant().toEpochMilli());
+            com.google.api.client.util.DateTime maxDateTime = new com.google.api.client.util.DateTime(
+                    ZonedDateTime.of(timeMax, ZoneId.of(timeZone)).toInstant().toEpochMilli());
 
-        // カレンダーからイベントを探してきてもらうよ
-        String calendarId = "primary";
-        Events events = service.events().list(calendarId)
-                .setTimeMin(minDateTime) // この日時から
-                .setTimeMax(maxDateTime) // この日時まで
-                .setSingleEvents(true) // 繰り返しイベントは一つずつ表示するよ
-                .setOrderBy("startTime") // 始まる時間順に並べるよ
-                .setQ("event") // 'event'という単語を含むイベントを検索する例
-                .execute();
+            String calendarId = "primary";
+            logger.info("Google Calendar API (List) を呼び出し中... カレンダーID: {}", calendarId);
+            Events events = service.events().list(calendarId)
+                    .setTimeMin(minDateTime)
+                    .setTimeMax(maxDateTime)
+                    .setSingleEvents(true)
+                    .setOrderBy("startTime")
+                    // .setQ("event") // 特定のクエリが必要なければ削除
+                    .execute();
+            logger.info("Google Calendar API (List) 呼び出し完了。{} 件のイベントが見つかりました。",
+                    events.getItems() != null ? events.getItems().size() : 0);
 
-        logger.info("Googleカレンダーイベント一覧取得成功。{} 件のイベントが見つかりました。",
-                events.getItems() != null ? events.getItems().size() : 0);
-        return objectMapper.convertValue(events, JsonNode.class); // 見つかったイベントの情報をJSONで返すよ
+            return objectMapper.convertValue(events, JsonNode.class);
+
+        } catch (GoogleJsonResponseException e) {
+            logger.error("Google Calendar API エラーレスポンス (JSON): {}", e.getDetails().getMessage(), e);
+            if (e.getStatusCode() == 401 || e.getStatusCode() == 403) {
+                logger.warn("Google Calendar APIからの認証/権限エラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage());
+                // フロントエンドに再認証を促すエラーを投げる
+                throw new GoogleAuthException("Google Calendar APIへのアクセスに認証が必要です。再ログインしてください。", null);
+            } else {
+                logger.error("Google Calendar APIからの予期せぬエラー (HTTP Status {}): {}", e.getStatusCode(), e.getMessage(),
+                        e);
+                throw new IOException("Google Calendar APIエラー: " + e.getDetails().getMessage(), e);
+            }
+        } catch (IOException e) {
+            logger.error("Google Calendar API呼び出し中のI/Oエラー: {}", e.getMessage(), e);
+            throw e;
+        } catch (GeneralSecurityException e) {
+            logger.error("Google Calendar API認証情報のセキュリティエラー: {}", e.getMessage(), e);
+            throw e;
+        }
+
     }
+
 }

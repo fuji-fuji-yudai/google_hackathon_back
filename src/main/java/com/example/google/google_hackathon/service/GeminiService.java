@@ -89,7 +89,26 @@ public class GeminiService {
 
     public String generateRoadmapProposal(String category, List<ReflectionSummaryDtoByFuji> summaries) {
     StringBuilder promptBuilder = new StringBuilder();
-    promptBuilder.append("以下のカテゴリ、業務の振り返り履歴をもとに、カテゴリに合わせた自己成長・キャリアアップのための長期的な目標設計につながる今後のロードマップ作製案を、「#」や「*」といった記号を使わない、マークダウンではないが、記号を使って読みやすくした自然な日本語文章形式で簡潔に提示してください。\n\n");
+    promptBuilder.append("\r\n" + //
+                "あなたはキャリア支援の専門家です。以下の業務振り返りデータをもとに、指定されたカテゴリに沿った今後の成長に向けたロードマップ案を作成してください。\r\n" + //
+                "\r\n" + //
+                "【出力形式】\r\n" + //
+                "以下の構成に従って、自然な日本語の文章で簡潔にまとめてください。Markdownや記号（#, *, - など）は使用せず、読みやすい段落構成で記述してください。\r\n" + //
+                "\r\n" + //
+                "【カテゴリ】: ○○○\r\n" + //
+                "\r\n" + //
+                "【概要】\r\n" + //
+                "これまでの活動を総括し、カテゴリに関連する成長の方向性を簡潔に述べてください。\r\n" + //
+                "\r\n" + //
+                "【短期目標（1〜3か月）】\r\n" + //
+                "- 直近の振り返り内容を踏まえた、具体的な行動やスキル習得の提案\r\n" + //
+                "\r\n" + //
+                "【中期目標（3〜6か月）】\r\n" + //
+                "- チームやプロジェクトへの貢献、応用スキルの活用など\r\n" + //
+                "\r\n" + //
+                "【長期目標（6か月〜1年）】\r\n" + //
+                "- キャリアパスや役割の拡張、自律的な成長に向けた提案\r\n" + //
+                "");
     promptBuilder.append("カテゴリ: ").append(category).append("\n\n");
 
     for (ReflectionSummaryDtoByFuji summary : summaries) {

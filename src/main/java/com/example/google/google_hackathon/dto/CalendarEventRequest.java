@@ -1,9 +1,12 @@
-// src/main/java/com/example/google/google_hackathon/dto/CalendarEventRequest.java
 package com.example.google.google_hackathon.dto;
 
 import lombok.Data; // Lombokを使う場合
+import lombok.NoArgsConstructor; // 引数なしコンストラクタを明示的に追加
+import lombok.AllArgsConstructor; // 全フィールドコンストラクタを明示的に追加
 
-@Data // Lombokのアノテーション
+@Data // @Getter, @Setter, @EqualsAndHashCode, @ToStringを自動生成
+@NoArgsConstructor // 引数なしのコンストラクタを自動生成 (必須)
+@AllArgsConstructor // 全フィールドを引数とするコンストラクタを自動生成 (任意)
 public class CalendarEventRequest {
     private String summary; // イベントタイトル
     private String description; // イベント説明
