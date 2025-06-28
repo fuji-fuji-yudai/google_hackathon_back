@@ -21,7 +21,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     // 依存関係がなくなったため、引数なしのコンストラクタが適切です
     public CustomOAuth2UserService() {
         // このサービスはSpring SecurityのOAuth2認証フローの一部として、
-        // Googleから受け取ったユーザー情報をそのまま返す役割に特化します。
+        // Googleから受け取ったユーザー情報をそのまま返す役割に特化
     }
 
     @Override
