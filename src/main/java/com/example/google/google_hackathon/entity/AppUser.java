@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "app_user", schema = "auth") // もしauthスキーマにテーブルがある場合。なければ schema = "public" など適切なものに修正
+@Table(name = "app_user", schema = "auth")
 public class AppUser {
 
     @Id
