@@ -52,9 +52,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return googleAuthTokenRepository.findByGoogleSubId(googleSubId)
                 .map(existingGoogleAuthToken -> {
                     logger.info("既存のGoogleAuthTokenが見つかりました。Google Sub ID: {}", googleSubId);
-                    AppUser appUser = appUserRepository.findById(existingGoogleAuthToken.getAppUserId())
+                    // ★修正: existingGoogleAuthToken.getAppUserId() を
+                    // existingGoogleAuthToken.getAppUser().getId() に変更
+                    AppUser appUser = appUserRepository.findById(existingGoogleAuthToken.getAppUser().getId())
                             .orElseThrow(() -> new IllegalStateException(
-                                    "関連AppUserが見つかりません: " + existingGoogleAuthToken.getAppUserId()));
+                                    "関連AppUserが見つかりません: " + existingGoogleAuthToken.getAppUser().getId()));
 
                     updateExistingUserAndToken(appUser, existingGoogleAuthToken, oauth2User, userRequest);
                     return createOAuth2User(appUser.getUsername(), oauth2User.getAttributes(),
@@ -103,14 +105,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 });
 
         GoogleAuthToken.GoogleAuthTokenBuilder tokenBuilder = GoogleAuthToken.builder()
-                .appUserId(appUser.getId())
+
+                .appUser(appUser) // AppUserオブジェクトを直接セット
                 .googleSubId(oauth2User.getName())
                 .accessToken(userRequest.getAccessToken().getTokenValue());
 
-        // ★削除: リフレッシュトークンの取得と保存ロジックを完全に削除しました。
         tokenBuilder.refreshToken(null); // 明示的にnullを設定
 
-        // ★修正: expiryDate (DBでは expiry_date) を Instant から LocalDateTime に変換して設定
         if (userRequest.getAccessToken().getExpiresAt() != null) {
             tokenBuilder.expiryDate(
                     LocalDateTime.ofInstant(userRequest.getAccessToken().getExpiresAt(), ZoneId.systemDefault()));
