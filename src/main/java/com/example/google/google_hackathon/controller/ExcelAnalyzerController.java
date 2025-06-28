@@ -47,11 +47,21 @@ public class ExcelAnalyzerController {
             System.out.println("認証済みユーザー: " + principal.getName());
             System.out.println("インポート対象タスク数: " + tasks.size());
 
-            // 各タスクの詳細をログ出力
+            // 受信したJSONデータを詳細表示
+            System.out.println("=== 受信データ詳細 ===");
             for (int i = 0; i < tasks.size(); i++) {
                 TaskDto task = tasks.get(i);
-                System.out.println(String.format("タスク%d: ID=%s, タイトル=%s, 親ID=%s",
-                        i + 1, task.id, task.title, task.parent_id));
+                System.out.println(String.format("タスク%d:", i + 1));
+                System.out.println(String.format("  ID: %s", task.id));
+                System.out.println(String.format("  タイトル: %s", task.title));
+                System.out.println(String.format("  担当者: %s", task.assignee));
+                System.out.println(String.format("  予定開始: %s", task.plan_start));
+                System.out.println(String.format("  予定終了: %s", task.plan_end));
+                System.out.println(String.format("  実績開始: %s", task.actual_start));
+                System.out.println(String.format("  実績終了: %s", task.actual_end));
+                System.out.println(String.format("  ステータス: %s", task.status));
+                System.out.println(String.format("  親ID: %s", task.parent_id));
+                System.out.println("---");
             }
 
             // タスクをDBに保存
