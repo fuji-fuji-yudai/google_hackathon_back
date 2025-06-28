@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+//import com.fasterxml.jackson.annotation.JsonProperty;
+
 @Data
 public class ReminderRequest {
     @NotBlank(message = "タイトルは必須です")
@@ -19,5 +21,5 @@ public class ReminderRequest {
     private LocalTime remindTime;
 
     private String description;
-    private String status; // 更新時などに使用するステータス
+    private String status;
 }

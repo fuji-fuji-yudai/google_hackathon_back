@@ -20,4 +20,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      * Optional<AppUser> user = appUserRepository.findByUsername("admin");
      */
     Optional<AppUser> findByUsername(String username);
+
+    // Optional<AppUser> findByEmail(String email); // メールアドレスでユーザーを検索するメソッド
 }

@@ -108,7 +108,7 @@ public class ReflectionService {
       // Reflectionデータをプロンプトとして構築
       StringBuilder promptBuilder = new StringBuilder();
       promptBuilder.append("以下は1ヶ月分のReflectionデータです。活動内容、達成事項、改善点をそれぞれ要約してください。\n")
-             .append("出力は以下のJSON形式で返してください：\n")
+             .append("出力は以下のJSON形式で返してください。出力は厳密な JSON 形式で、コードブロック（```）などは含めずに返してください。：\n")
              .append("{\n")
              .append("  \"activity_summary\": \"要約された活動内容\",\n")
              .append("  \"achievement_summary\": \"要約された達成事項\",\n")
@@ -154,17 +154,22 @@ public class ReflectionService {
       JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
       System.out.println("jsonResponse: "+jsonResponse);
       JsonArray candidates = jsonResponse.getAsJsonArray("candidates");
+      System.out.println(candidates);
 
       if (candidates != null && candidates.size() > 0) {
         JsonObject content = candidates.get(0).getAsJsonObject()
         .getAsJsonObject("content");
+        System.out.println("content: " + content);
         JsonArray responseParts  = content.getAsJsonArray("parts");
+        System.out.println("responseParts: " + responseParts);
 
         if (responseParts  != null && responseParts .size() > 0) {
           String text = responseParts .get(0).getAsJsonObject().get("text").getAsString();
+          System.out.println("text: " + text);
 
           // text は JSON 文字列なので、さらにパース
           JsonObject summaryJson = JsonParser.parseString(text).getAsJsonObject();
+          System.out.println("summaryJson: " + summaryJson);
 
           String activitySummary = summaryJson.get("activity_summary").getAsString();
           String achievementSummary = summaryJson.get("achievement_summary").getAsString();

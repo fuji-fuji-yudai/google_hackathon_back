@@ -7,39 +7,78 @@ import lombok.AllArgsConstructor; // 全フィールドのコンストラクタ�
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime; //LocalDateTimeをインポート
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "reminders", schema = "public")
 @Data // これ一つで getter, setter, toString, equals, hashCode を自動生成
 @NoArgsConstructor // デフォルトコンストラクタを自動生成
-@AllArgsConstructor // 全フィールドを引数とするコンストラクタを自動生成 (今回はカスタムコンストラクタと競合しないよう注意)
+@AllArgsConstructor // 全フィールドを引数とするコンストラクタを自動生成
 public class Reminder {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String customTitle; // 例: リマインダーのタイトル
-
-    @Column(nullable = false)
-    private LocalDate remindDate; // 例: 通知日
-
-    @Column(nullable = false)
-    private LocalTime remindTime; // 例: 通知時間
-
-    @Column(nullable = true, length = 500) // descriptionはnullを許容する
-    private String description; // 例: 詳細説明
-
-    @Column(nullable = false)
-    private String status = "PENDING"; // 例: "PENDING", "NOTIFIED", "COMPLETED" など
-
-    // AppUserとの関連付け (以前の指示通り)
-    @ManyToOne(fetch = FetchType.LAZY) // 複数のリマインダーが一人のAppUserに属する
-    @JoinColumn(name = "user_id", nullable = false) // データベース上の外部キーカラム名。AppUserエンティティの主キーに紐づく
+    // AppUserとの関連付け
+    // AppUser への ManyToOne 関連に JsonIgnore を付ける
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private AppUser appUser; // リマインダーの所有者
 
-    // カスタムコンストラクタ（特定のフィールドで初期化したい場合、@NoArgsConstructorと@AllArgsConstructorと併用可）
-    // 例えば、IDやstatusを除いて初期化したい場合
+    @Column(name = "custom_title", nullable = false)
+    private String customTitle; // 例: リマインダーのタイトル
+
+    @Column(name = "description", length = 500) // descriptionはnullを許容する (nullable = trueは省略可)
+    private String description; // 例: 詳細説明
+
+    // remindDateフィールド: 日付のみの形式
+    @JsonFormat(pattern = "yyyy-MM-dd") // JSON出力フォーマットを指定
+    @Column(name = "remind_date", nullable = false)
+    private LocalDate remindDate;
+
+    // remindTimeフィールド: 時間のみの形式
+    @JsonFormat(pattern = "HH:mm:ss") // JSON出力フォーマットを指定
+    @Column(name = "remind_time")
+    private LocalTime remindTime;
+
+    // status を isCompleted に変更
+    @Column(name = "is_completed", nullable = false)
+    private Boolean isCompleted = false; // 例: リマインダーが完了したかどうか
+
+    // createdAtフィールド: 日時を含む形式
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // ★追加: JSON出力フォーマットを指定
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    // updatedAtフィールド: 日時を含む形式
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") // ★追加: JSON出力フォーマットを指定
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    // Google CalendarのイベントID
+    @Column(name = "google_event_id")
+    private String googleEventId;
+
+    // エンティティが永続化される直前に実行されるコールバック
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now(); // 作成時も更新時も初期設定
+        if (this.isCompleted == null) { // nullの場合にfalseをセット
+            this.isCompleted = false;
+        }
+    }
+
+    // エンティティが更新される直前に実行されるコールバック
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // カスタムコンストラクタを更新後のフィールドに合わせて修正
     public Reminder(String customTitle, LocalDate remindDate, LocalTime remindTime, String description,
             AppUser appUser) {
         this.customTitle = customTitle;
@@ -47,6 +86,7 @@ public class Reminder {
         this.remindTime = remindTime;
         this.description = description;
         this.appUser = appUser;
-        this.status = "PENDING"; // デフォルトでPENDING
+        this.isCompleted = false; // デフォルトで未完了
+        // createdAt, updatedAt, googleEventId は @PrePersist で自動設定される
     }
 }

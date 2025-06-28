@@ -20,7 +20,7 @@ public interface RoadmapEntryRepository extends JpaRepository<RoadmapEntry, Long
      * @param userId 検索対象のAppUserのID
      * @return 指定されたAppUserに紐づくRoadmapEntryのリスト
      */
-    List<RoadmapEntry> findByUser_Id(Long userId); // ★このメソッドを追加または修正 (findByAppUser_Id から変更)★
+    List<RoadmapEntry> findByUser_Id(Long userId);
 
     /**
      * カテゴリ名でRoadmapEntryを検索します。
@@ -28,7 +28,7 @@ public interface RoadmapEntryRepository extends JpaRepository<RoadmapEntry, Long
      * @param categoryName 検索対象のカテゴリ名
      * @return 指定されたカテゴリ名に紐づくRoadmapEntryのリスト
      */
-    List<RoadmapEntry> findByCategoryName(String categoryName); // ★このメソッドを追加★
+    List<RoadmapEntry> findByCategoryName(String categoryName);
 
     // 必要に応じてfindByUser_Usernameなどの複合クエリメソッドもここに追加できます
     // List<RoadmapEntry> findByUser_Username(String username);

@@ -34,9 +34,9 @@ public class RoadmapService {
     public RoadmapEntry updateRoadmapEntry(Long id, RoadmapEntry updatedEntry) {
         return roadmapEntryRepository.findById(id).map(entry -> {
             entry.setCategoryName(updatedEntry.getCategoryName());
-            entry.setTaskName(updatedEntry.getTaskName()); // タスク名を設定
-            entry.setStartMonth(updatedEntry.getStartMonth()); // 開始月を設定
-            entry.setEndMonth(updatedEntry.getEndMonth()); // 終了月を設定
+            entry.setTaskName(updatedEntry.getTaskName());
+            entry.setStartMonth(updatedEntry.getStartMonth());
+            entry.setEndMonth(updatedEntry.getEndMonth());
             return roadmapEntryRepository.save(entry);
         }).orElseThrow(() -> new RuntimeException("Roadmap Entry not found with id " + id));
     }
