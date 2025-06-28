@@ -5,7 +5,6 @@ C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\examp
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebSocketConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebSocketSecurityConfig.java
-C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\CalendarController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\ChatController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\DemoController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\ExcelAnalyzerController.java
@@ -26,6 +25,7 @@ C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\examp
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\LoginRequest.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\QuestionRequest.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\ReflectionSummaryDtoByFuji.java
+C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\ReminderDto.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\ReminderRequest.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\ReminderResponse.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\dto\RoadmapRequestDto.java

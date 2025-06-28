@@ -42,6 +42,7 @@ com\example\google\google_hackathon\service\GeminiService.class
 com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
+com\example\google\google_hackathon\dto\ReminderDto.class
 com\example\google\google_hackathon\service\RoadmapCategoryService.class
 com\example\google\google_hackathon\dto\SimilarMessageDTO.class
 com\example\google\google_hackathon\controller\ReflectionSummaryControllerByFuji.class
@@ -82,5 +83,4 @@ com\example\google\google_hackathon\entity\ReflectionSummaryEntity.class
 com\example\google\google_hackathon\controller\ReflectionController.class
 com\example\google\google_hackathon\dto\ReflectionSummaryDtoByFuji.class
 com\example\google\google_hackathon\entity\ChatMessageEntity.class
-com\example\google\google_hackathon\controller\CalendarController.class
 com\example\google\google_hackathon\entity\FeedbackEntity.class

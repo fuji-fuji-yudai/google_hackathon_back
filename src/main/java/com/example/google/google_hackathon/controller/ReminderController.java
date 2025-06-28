@@ -1,20 +1,16 @@
 package com.example.google.google_hackathon.controller;
 
-import com.example.google.google_hackathon.dto.ReminderRequest;
-import com.example.google.google_hackathon.dto.ReminderResponse;
 import com.example.google.google_hackathon.entity.AppUser;
 import com.example.google.google_hackathon.entity.Reminder;
-import com.example.google.google_hackathon.service.ReminderService;
 import com.example.google.google_hackathon.repository.AppUserRepository;
 import com.example.google.google_hackathon.service.GoogleCalendarService;
-import com.example.google.google_hackathon.service.GoogleAuthException;
-import java.util.Map;
+import com.example.google.google_hackathon.service.ReminderService;
+import com.example.google.google_hackathon.dto.ReminderDto;
+import com.example.google.google_hackathon.dto.ReminderRequest;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,17 +18,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.time.LocalDateTime;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-
-// ★重要: com.google.api.client.util.Value をインポートしている場合は削除してください。
-// もし使っているなら、その箇所で完全修飾名で記述するか、別名インポート (import com.google.api.client.util.Value as GoogleValue;) を検討してください。
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reminders")
@@ -44,10 +39,6 @@ public class ReminderController {
     private final AppUserRepository appUserRepository;
     private final GoogleCalendarService googleCalendarService;
 
-    // フロントエンドのリダイレクトベースURLを注入
-    @Value("${app.frontend.redirect-url}") // application.properties のキーと一致させる
-    private String frontendRedirectBaseUrl;
-
     public ReminderController(ReminderService reminderService, AppUserRepository appUserRepository,
             GoogleCalendarService googleCalendarService) {
         this.reminderService = reminderService;
@@ -57,49 +48,57 @@ public class ReminderController {
 
     private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getName();
         }
-        return authentication.getName();
+        return null;
     }
 
-    @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ReminderResponse>> getAllRemindersForCurrentUser() {
-        String username = getCurrentUsername();
-        if (username == null) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+    private Reminder convertToEntity(ReminderRequest reminderRequest) {
+        Reminder reminder = new Reminder();
+        reminder.setCustomTitle(reminderRequest.getCustomTitle());
+        reminder.setDescription(reminderRequest.getDescription());
+
+        try {
+            reminder.setRemindDate(LocalDate.parse(reminderRequest.getRemindDate()));
+            reminder.setRemindTime(LocalTime.parse(reminderRequest.getRemindTime()));
+            if (reminderRequest.getNextRemindTime() != null && !reminderRequest.getNextRemindTime().isEmpty()) {
+                reminder.setNextRemindTime(LocalDateTime.parse(reminderRequest.getNextRemindTime(),
+                        DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            } else {
+                reminder.setNextRemindTime(null); // 明示的にnullを設定
+            }
+        } catch (DateTimeParseException e) {
+            logger.error("日付または時刻のパースエラー: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid date or time format in ReminderRequest", e);
         }
-        List<Reminder> reminders = reminderService.getRemindersByUsername(username);
-        List<ReminderResponse> responses = reminders.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return new ResponseEntity<>(responses, HttpStatus.OK);
+
+        reminder.setRecurrenceType(reminderRequest.getRecurrenceType());
+        return reminder;
     }
 
-    @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ReminderResponse> getReminderByIdForCurrentUser(@PathVariable Long id) {
-        String username = getCurrentUsername();
-        if (username == null) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
-        }
-        return reminderService.getReminderByIdAndUsername(id, username)
-                .map(this::convertToDto)
-                .map(reminder -> new ResponseEntity<>(reminder, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    private ReminderDto convertToDto(Reminder reminder) {
+        return new ReminderDto(
+                reminder.getId(),
+                reminder.getCustomTitle(),
+                reminder.getDescription(),
+                reminder.getRemindDate() != null ? reminder.getRemindDate().toString() : null,
+                reminder.getRemindTime() != null ? reminder.getRemindTime().toString() : null,
+                reminder.getRecurrenceType(),
+                reminder.getNextRemindTime() != null
+                        ? reminder.getNextRemindTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null,
+                reminder.getGoogleEventId());
     }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> createReminder(
+    public ResponseEntity<?> createReminder( // ★型を<?>に修正★
             @Valid @RequestBody ReminderRequest reminderRequest,
-            @RequestParam(defaultValue = "false") boolean linkToGoogleCalendar,
-            @RequestHeader(value = "X-Google-Access-Token", required = false) String googleAccessToken) {
+            @RequestParam(defaultValue = "false") boolean linkToGoogleCalendar) {
 
         logger.info("========== ReminderController.createReminder メソッド開始。リクエストボディ: {}, Google連携フラグ: {}",
                 reminderRequest, linkToGoogleCalendar);
-        logger.info("Googleアクセストークン提供済み: {}", googleAccessToken != null ? "はい" : "いいえ");
 
         String username = getCurrentUsername();
         if (username == null) {
@@ -114,46 +113,34 @@ public class ReminderController {
                 });
 
         LocalDateTime startDateTime;
-        LocalDateTime endDateTime;
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
-            // ReminderRequestのgetRemindDate()とgetRemindTime()が存在すると仮定
             startDateTime = LocalDateTime.parse(reminderRequest.getRemindDate() + "T" + reminderRequest.getRemindTime(),
                     formatter);
-            endDateTime = startDateTime.plusHours(1); // 仮に1時間のイベントとして設定
         } catch (DateTimeParseException e) {
             logger.error("リマインダーの日付/時刻のパースエラー: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "日付または時刻の形式が不正です。"));
         }
+        LocalDateTime endDateTime = startDateTime.plusHours(1);
 
-        // Reminderエンティティのコンストラクタエラーを避けるため、
-        // Reminderエンティティに@NoArgsConstructorが付与されていることを前提に
-        // デフォルトコンストラクタでインスタンス化
-        // もしReminderエンティティに引数付きコンストラクタしかなく、@NoArgsConstructorがない場合、
-        // Reminderエンティティを修正するか、適切な引数を与えてコンストラクタを呼び出す必要があります。
-        Reminder reminder = convertToEntity(reminderRequest); // このメソッド内で Reminder のインスタンス化が行われる
+        Reminder reminder = convertToEntity(reminderRequest);
         reminder.setAppUser(currentUser);
         Reminder createdReminder = reminderService.createReminder(reminder);
         logger.info("リマインダーをDBに保存しました。ID: {}", createdReminder.getId());
 
         if (linkToGoogleCalendar) {
-            if (googleAccessToken == null || googleAccessToken.isEmpty()) {
-                logger.warn("Google連携が要求されましたが、X-Google-Access-Token ヘッダーがありません。");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("message", "Googleカレンダー連携にはアクセストークンが必要です。"));
-            }
-
             try {
-                logger.info("Google Calendar Event の作成を試行します。タイトル: {}, 開始: {}, 終了: {}",
-                        reminderRequest.getCustomTitle(), startDateTime, endDateTime);
+                logger.info("Google Calendar Event の作成を試行します。タイトル: {}, 開始: {}, 終了: {}, 参加者: {}",
+                        reminderRequest.getCustomTitle(), startDateTime, endDateTime,
+                        reminderRequest.getAttendeeEmails());
 
                 JsonNode calendarEventResponse = googleCalendarService.createGoogleCalendarEvent(
-                        googleAccessToken, // 正しい引数を渡す
                         reminderRequest.getCustomTitle(),
                         reminderRequest.getDescription(),
                         startDateTime,
                         endDateTime,
-                        "Asia/Tokyo");
+                        "Asia/Tokyo",
+                        reminderRequest.getAttendeeEmails());
 
                 logger.info("Google Calendar Event の作成結果 (JsonNode): {}",
                         calendarEventResponse != null ? calendarEventResponse.toPrettyString() : "null");
@@ -161,13 +148,7 @@ public class ReminderController {
                 if (calendarEventResponse != null && calendarEventResponse.has("id")) {
                     String googleEventId = calendarEventResponse.get("id").asText();
                     createdReminder.setGoogleEventId(googleEventId);
-                    // ReminderService に Google Event ID のみを更新するメソッドがあればそれが理想。
-                    // なければ、reminderService.updateReminder(createdReminder.getId(), reminderRequest,
-                    // username);
-                    // のように適切な update メソッドを呼び出す。
-                    // ここでは仮に、ReminderService の createReminder が更新も兼ねるか、
-                    // または reminderService.save(createdReminder); のように変更がDBに反映されると仮定
-                    reminderService.createReminder(createdReminder); // 例: 再保存で対応（要ReminderService確認）
+                    reminderService.updateReminder(createdReminder);
                     logger.info("Google Event ID '{}' をリマインダーID '{}' に関連付けました。", googleEventId,
                             createdReminder.getId());
                 } else {
@@ -177,11 +158,10 @@ public class ReminderController {
                 logger.info("リマインダー作成とGoogleカレンダー連携が完了しました。リマインダーID: {}", createdReminder.getId());
                 return new ResponseEntity<>(convertToDto(createdReminder), HttpStatus.CREATED);
 
-            } catch (GoogleAuthException e) {
-                logger.warn("Google Calendar連携のために再認証が必要: {}", e.getMessage(), e);
-                return ResponseEntity.status(HttpStatus.TEMPORARY_REDIRECT)
-                        .body(Map.of("redirectUrl", e.getAuthUrl() != null ? e.getAuthUrl()
-                                : frontendRedirectBaseUrl + "/google-calendar-auth"));
+            } catch (IOException | GeneralSecurityException e) {
+                logger.error("Google Calendar連携中にエラーが発生しました: {}", e.getMessage(), e);
+                return new ResponseEntity<>(Map.of("message", "Googleカレンダー連携エラー: " + e.getMessage()),
+                        HttpStatus.INTERNAL_SERVER_ERROR);
             } catch (Exception e) {
                 logger.error("Google Calendar連携中に予期せぬエラーが発生しました: {}", e.getMessage(), e);
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -192,99 +172,68 @@ public class ReminderController {
         }
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ReminderDto> getReminderById(@PathVariable Long id) {
+        Reminder reminder = reminderService.getReminderById(id)
+                .orElseThrow(() -> new RuntimeException("Reminder not found with id: " + id));
+        if (!reminder.getAppUser().getUsername().equals(getCurrentUsername())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied to reminder");
+        }
+        return ResponseEntity.ok(convertToDto(reminder));
+    }
+
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ReminderDto>> getAllReminders() {
+        AppUser currentUser = appUserRepository.findByUsername(getCurrentUsername())
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        List<Reminder> reminders = reminderService.getRemindersByUser(currentUser);
+        List<ReminderDto> reminderDtos = reminders.stream().map(this::convertToDto).collect(Collectors.toList());
+        return ResponseEntity.ok(reminderDtos);
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ReminderResponse> updateReminder(@PathVariable Long id,
-            @Valid @RequestBody ReminderRequest reminderRequest) {
-        String username = getCurrentUsername();
-        if (username == null) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+    public ResponseEntity<?> updateReminder(@PathVariable Long id,
+            @Valid @RequestBody ReminderRequest reminderRequest) { // ★型を<?>に修正★
+        Reminder existingReminder = reminderService.getReminderById(id)
+                .orElseThrow(() -> new RuntimeException("Reminder not found with id: " + id));
+        if (!existingReminder.getAppUser().getUsername().equals(getCurrentUsername())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied to reminder");
         }
 
-        Reminder updatedReminder = reminderService.updateReminder(id, reminderRequest, username);
-
-        if (updatedReminder != null) {
-            return new ResponseEntity<>(convertToDto(updatedReminder), HttpStatus.OK);
+        existingReminder.setCustomTitle(reminderRequest.getCustomTitle());
+        existingReminder.setDescription(reminderRequest.getDescription());
+        try {
+            existingReminder.setRemindDate(LocalDate.parse(reminderRequest.getRemindDate()));
+            existingReminder.setRemindTime(LocalTime.parse(reminderRequest.getRemindTime()));
+            if (reminderRequest.getNextRemindTime() != null && !reminderRequest.getNextRemindTime().isEmpty()) {
+                existingReminder.setNextRemindTime(LocalDateTime.parse(reminderRequest.getNextRemindTime(),
+                        DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            } else {
+                existingReminder.setNextRemindTime(null);
+            }
+        } catch (DateTimeParseException e) {
+            logger.error("リマインダー更新時の日付/時刻のパースエラー: {}", e.getMessage(), e);
+            // ★この行を修正★ ResponseEntity.ok()ではなく、HttpStatus.BAD_REQUESTでMapを返す
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "更新データの日付または時刻の形式が不正です。"));
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        existingReminder.setRecurrenceType(reminderRequest.getRecurrenceType());
+
+        Reminder updatedReminder = reminderService.updateReminder(existingReminder);
+        return ResponseEntity.ok(convertToDto(updatedReminder));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteReminder(@PathVariable Long id) {
-        String username = getCurrentUsername();
-        if (username == null) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        Reminder reminderToDelete = reminderService.getReminderById(id)
+                .orElseThrow(() -> new RuntimeException("Reminder not found with id: " + id));
+        if (!reminderToDelete.getAppUser().getUsername().equals(getCurrentUsername())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied to reminder");
         }
-
-        boolean deleted = reminderService.deleteReminder(id, username);
-
-        if (deleted) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    private ReminderResponse convertToDto(Reminder reminder) {
-        ReminderResponse dto = new ReminderResponse();
-        dto.setId(reminder.getId()); // getId() の呼び出し
-        dto.setCustomTitle(reminder.getCustomTitle()); // getCustomTitle() の呼び出し
-
-        if (reminder.getRemindDate() != null) {
-            dto.setRemindDate(reminder.getRemindDate().format(DateTimeFormatter.ISO_LOCAL_DATE)); // getRemindDate()
-                                                                                                  // の呼び出し
-        }
-        if (reminder.getRemindTime() != null) {
-            dto.setRemindTime(reminder.getRemindTime().format(DateTimeFormatter.ofPattern("HH:mm"))); // getRemindTime()
-                                                                                                      // の呼び出し
-        }
-
-        dto.setDescription(reminder.getDescription()); // getDescription() の呼び出し
-        dto.setGoogleEventId(reminder.getGoogleEventId()); // getGoogleEventId() の呼び出し
-
-        if (reminder.getIsCompleted() != null && reminder.getIsCompleted()) { // getIsCompleted() の呼び出し
-            dto.setStatus("COMPLETED"); // setStatus() の呼び出し
-        } else {
-            dto.setStatus("PENDING"); // setStatus() の呼び出し
-        }
-
-        if (reminder.getAppUser() != null) { // getAppUser() の呼び出し
-            dto.setUsername(reminder.getAppUser().getUsername()); // getAppUser().getUsername() の呼び出し
-        }
-        return dto;
-    }
-
-    private Reminder convertToEntity(ReminderRequest dto) {
-        // Reminderエンティティに@NoArgsConstructorが付与されていることを前提に
-        // デフォルトコンストラクタでインスタンス化
-        // もし引数付きコンストラクタしかない場合は、Reminderエンティティに@NoArgsConstructorを追加するか、
-        // new Reminder(dto.getCustomTitle(), LocalDate.parse(dto.getRemindDate()), ...)
-        // のように適切な引数で呼び出す必要があります。
-        Reminder entity = new Reminder(); // ★Reminderコンストラクタの呼び出し
-
-        entity.setCustomTitle(dto.getCustomTitle()); // setCustomTitle() の呼び出し
-        entity.setDescription(dto.getDescription()); // setDescription() の呼び出し
-
-        if (dto.getRemindDate() != null && !dto.getRemindDate().isEmpty()) { // getRemindDate() の呼び出し
-            entity.setRemindDate(LocalDate.parse(dto.getRemindDate())); // setRemindDate() の呼び出し
-        }
-        if (dto.getRemindTime() != null && !dto.getRemindTime().isEmpty()) { // getRemindTime() の呼び出し
-            try {
-                entity.setRemindTime(LocalTime.parse(dto.getRemindTime(), DateTimeFormatter.ofPattern("HH:mm"))); // setRemindTime()
-                                                                                                                  // の呼び出し
-            } catch (DateTimeParseException e) {
-                entity.setRemindTime(LocalTime.parse(dto.getRemindTime(), DateTimeFormatter.ISO_LOCAL_TIME)); // setRemindTime()
-                                                                                                              // の呼び出し
-            }
-        }
-
-        // entity.setGoogleEventId(dto.getGoogleEventId()); // リクエストからは通常セットしない
-
-        if (dto.getStatus() != null && "COMPLETED".equalsIgnoreCase(dto.getStatus())) { // getStatus() の呼び出し
-            entity.setIsCompleted(true); // setIsCompleted() の呼び出し
-        } else {
-            entity.setIsCompleted(false); // setIsCompleted() の呼び出し
-        }
-        return entity;
+        reminderService.deleteReminder(id);
+        return ResponseEntity.noContent().build();
     }
 }
