@@ -60,36 +60,36 @@ public class GoogleCalendarService {
      * Beanの初期化時に、サービスアカウントキーと委任ユーザーのメールアドレスを
      * それぞれのSecret Managerから取得し、メモリにロードします。
      */
-    // @PostConstruct
-    // public void init() throws IOException {
-    //     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
-    //         // サービスアカウントキーの取得
-    //         logger.info("サービスアカウントキーをSecret Managerから取得中。Secret ID: {}", serviceAccountSecretId);
-    //         SecretVersionName serviceAccountKeyName = SecretVersionName.newBuilder()
-    //                 .setProject("nomadic-bison-459812-a8") // あなたのプロジェクトIDに置き換えてください
-    //                 .setSecret(serviceAccountSecretId)
-    //                 .setSecretVersion("latest")
-    //                 .build();
-    //         AccessSecretVersionResponse keyResponse = client.accessSecretVersion(serviceAccountKeyName);
-    //         this.serviceAccountKeyBytes = keyResponse.getPayload().getData().toByteArray();
-    //         logger.info("サービスアカウントキーを正常に取得しました。");
+    @PostConstruct
+    public void init() throws IOException {
+        try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
+            // サービスアカウントキーの取得
+            logger.info("サービスアカウントキーをSecret Managerから取得中。Secret ID: {}", serviceAccountSecretId);
+            SecretVersionName serviceAccountKeyName = SecretVersionName.newBuilder()
+                    .setProject("nomadic-bison-459812-a8") // あなたのプロジェクトIDに置き換えてください
+                    .setSecret(serviceAccountSecretId)
+                    .setSecretVersion("latest")
+                    .build();
+            AccessSecretVersionResponse keyResponse = client.accessSecretVersion(serviceAccountKeyName);
+            this.serviceAccountKeyBytes = keyResponse.getPayload().getData().toByteArray();
+            logger.info("サービスアカウントキーを正常に取得しました。");
 
-    //         // 委任ユーザーのメールアドレスの取得
-    //         logger.info("委任ユーザーのメールアドレスをSecret Managerから取得中。Secret ID: {}", delegateEmailSecretId);
-    //         SecretVersionName delegateEmailName = SecretVersionName.newBuilder()
-    //                 .setProject("nomadic-bison-459812-a8") // あなたのプロジェクトIDに置き換えてください
-    //                 .setSecret(delegateEmailSecretId)
-    //                 .setSecretVersion("latest")
-    //                 .build();
-    //         AccessSecretVersionResponse emailResponse = client.accessSecretVersion(delegateEmailName);
-    //         this.delegatedUserEmail = emailResponse.getPayload().getData().toStringUtf8();
-    //         logger.info("委任ユーザーのメールアドレスを正常に取得しました: {}", delegatedUserEmail);
+            // 委任ユーザーのメールアドレスの取得
+            logger.info("委任ユーザーのメールアドレスをSecret Managerから取得中。Secret ID: {}", delegateEmailSecretId);
+            SecretVersionName delegateEmailName = SecretVersionName.newBuilder()
+                    .setProject("nomadic-bison-459812-a8") // あなたのプロジェクトIDに置き換えてください
+                    .setSecret(delegateEmailSecretId)
+                    .setSecretVersion("latest")
+                    .build();
+            AccessSecretVersionResponse emailResponse = client.accessSecretVersion(delegateEmailName);
+            this.delegatedUserEmail = emailResponse.getPayload().getData().toStringUtf8();
+            logger.info("委任ユーザーのメールアドレスを正常に取得しました: {}", delegatedUserEmail);
 
-    //     } catch (Exception e) {
-    //         logger.error("Secret Managerからの認証情報取得中にエラーが発生しました: {}", e.getMessage(), e);
-    //         throw new IOException("Failed to retrieve credentials from Secret Manager", e);
-    //     }
-    // }
+        } catch (Exception e) {
+            logger.error("Secret Managerからの認証情報取得中にエラーが発生しました: {}", e.getMessage(), e);
+            throw new IOException("Failed to retrieve credentials from Secret Manager", e);
+        }
+    }
 
     private Calendar getCalendarService(String userEmailToImpersonate) throws IOException, GeneralSecurityException {
         logger.info("Google Calendarサービスを初期化中。委任ユーザー: {}", userEmailToImpersonate);
