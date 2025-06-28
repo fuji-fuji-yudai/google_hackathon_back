@@ -1,7 +1,6 @@
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\FirestoreConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\JacksonConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\model\ChatMessage.java
-C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\PasswordEncoderConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\SecurityConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebSocketConfig.java
@@ -38,7 +37,6 @@ C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\examp
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\AppUser.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ChatMessageEntity.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\FeedbackEntity.java
-C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\GoogleAuthToken.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ReflectionEntity.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\ReflectionSummaryEntity.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\entity\Reminder.java
@@ -53,7 +51,6 @@ C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\examp
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\AppUserRepository.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ChatMessageRepository.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\FeedbackRepository.java
-C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\GoogleAuthTokenRepository.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReflectionRepository.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReflectionSummaryRepository.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\repository\ReminderRepository.java

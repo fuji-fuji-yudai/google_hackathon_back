@@ -40,11 +40,9 @@ import com.example.google.google_hackathon.security.JwtAuthenticationFilter;
 import com.example.google.google_hackathon.security.JwtTokenProvider;
 import com.example.google.google_hackathon.service.CustomOAuth2UserService;
 import com.example.google.google_hackathon.repository.AppUserRepository;
-import com.example.google.google_hackathon.repository.GoogleAuthTokenRepository;
 import com.example.google.google_hackathon.service.CustomUserDetailsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.google.google_hackathon.entity.AppUser; // AppUserエンティティをインポート
-import com.example.google.google_hackathon.entity.GoogleAuthToken;
 
 @Configuration
 @EnableWebSecurity // このアノテーションでSpring SecurityのWebセキュリティ機能を有効化
@@ -52,33 +50,22 @@ public class SecurityConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
-    // Google OAuth2ログイン連携のために必要な依存関係を注入
-    private final AppUserRepository appUserRepository;
-    private final CustomUserDetailsService customUserDetailsService; // JWT認証とOAuth2認証両方で使用
+    // アプリケーション独自のJWT認証のために必要な依存関係
+    private final CustomUserDetailsService customUserDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final GoogleAuthTokenRepository googleAuthTokenRepository;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    @Autowired // ★修正: PasswordEncoder はコンストラクタではなく、@Autowired で注入します
-    private PasswordEncoder passwordEncoder; // ★修正: final を削除し、@Autowired を付ける
 
     @Value("${app.frontend.redirect-url}")
     private String frontendRedirectBaseUrl; // プロパティを保持
 
-    // コンストラクタに全ての依存関係を注入（Spring Boot 2.x以降では@Autowiredを省略可能）
+    // コンストラクタで必要な依存関係のみを注入
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
-            AppUserRepository appUserRepository,
             CustomUserDetailsService customUserDetailsService,
-            JwtTokenProvider jwtTokenProvider,
-            GoogleAuthTokenRepository googleAuthTokenRepository,
-            PasswordEncoder passwordEncoder) { // PasswordEncoder をコンストラクタに追加
+            JwtTokenProvider jwtTokenProvider) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.appUserRepository = appUserRepository;
         this.customUserDetailsService = customUserDetailsService;
         this.jwtTokenProvider = jwtTokenProvider;
-        this.googleAuthTokenRepository = googleAuthTokenRepository;
-        // this.passwordEncoder = passwordEncoder; // 注入された PasswordEncoder を設定
     }
 
     @Bean
@@ -115,51 +102,63 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()
                         .requestMatchers("/api/reflections/**").authenticated()
                         .requestMatchers("/api/roadmap/generate").permitAll()
-                        .anyRequest().authenticated()) // その他の全てのリクエストは認証が必要
+
+                        .requestMatchers("/api/reflections/**").authenticated()
+                        .requestMatchers("/api/roadmap/generate").permitAll()
+
+                        // Google Calendar API 連携のエンドポイントは認証が必要
+                        // ここでアプリケーション独自のJWT認証を要求する
+                        .requestMatchers("/api/calendar/**").authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> {
                             logger.warn("認証されていないリクエストが拒否されました: URI={}, 例外={}: {}",
                                     req.getRequestURI(), excep.getClass().getName(), excep.getMessage());
                             res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                         }))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // JWTフィルターを通常認証フィルターの前に配置
-                // Google OAuth2 Login のための設定
-                .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(authorization -> authorization
-                                .baseUri("/oauth2/authorization") // OAuth2認証を開始するURI (例: /oauth2/authorization/google)
-                        )
-                        .redirectionEndpoint(redirection -> redirection
-                                // GoogleからのリダイレクトURIのパターン
-                                // 以前のエラーログで示された正確なURIに合わせて /oauth2/callback を使用
-                                // Spring Securityはこれを処理する
-                                .baseUri("/oauth2/callback"))
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(oAuth2UserService()) // カスタムOAuth2UserServiceを登録 (別途定義されているはず)
-                        )
-                        // 認証成功時のハンドラーをインラインで定義し、フロントエンドにリダイレクト
-                        .successHandler((request, response, authentication) -> {
-                            logger.info("OAuth2 Login Success! User: {}", authentication.getName());
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                            response.sendRedirect("https://my-frontimage-14467698004.asia-northeast1.run.app/roadmap");
-                        })
-                        .failureHandler((request, response, exception) -> {
-                            logger.error("OAuth2 Login Failed: {} URI: {}", exception.getMessage(),
-                                    request.getRequestURI(), exception);
-                            String encodedErrorMessage = java.net.URLEncoder.encode(exception.getMessage(), "UTF-8");
-                            response.sendRedirect(
-                                    // フロントエンドのログインページにリダイレクト
-                                    // frontendRedirectBaseUrl を使用する場合
-                                    // frontendRedirectBaseUrl + "/login?auth_failed=true&error=" +
-                                    // encodedErrorMessage);
-                                    "https://my-frontimage-14467698004.asia-northeast1.run.app/login?auth_failed=true&error="
-                                            + encodedErrorMessage);
-                        }))
-                .build(); // http.build() を最後に呼び出す
+                // Googleカレンダー連携専用のOAuth2 Login設定を適用
+                // calendarServiceOAuth2Login() Beanで定義したCustomizerをoauth2Loginメソッドに直接渡します。
+                .oauth2Login(calendarServiceOAuth2Login()) // ← このように修正
+                .build();
+    }
+
+    // Googleカレンダー連携専用のOAuth2Login設定をBeanとして定義
+    @Bean
+    public Customizer<org.springframework.security.config.annotation.web.configurers.oauth2.client.OAuth2LoginConfigurer<HttpSecurity>> calendarServiceOAuth2Login() {
+        return oauth2 -> oauth2
+                // カレンダー連携専用の認証開始URI
+                .authorizationEndpoint(authorization -> authorization
+                        .baseUri("/oauth2/authorization/google-calendar") // 例: /oauth2/authorization/google-calendar
+                )
+                // カレンダー連携専用のコールバックURI
+                .redirectionEndpoint(redirection -> redirection
+                        .baseUri("/oauth2/callback/google-calendar") // 例: /oauth2/callback/google-calendar
+                )
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(oAuth2UserService()) // カスタムOAuth2UserServiceを登録
+                )
+                // 認証成功時のハンドラー
+                .successHandler(googleCalendarOAuth2SuccessHandler())
+                // 認証失敗時のハンドラー
+                .failureHandler((request, response, exception) -> {
+                    logger.error("Google Calendar OAuth2 Login Failed: {} URI: {}", exception.getMessage(),
+                            request.getRequestURI(), exception);
+                    String encodedErrorMessage = java.net.URLEncoder.encode(exception.getMessage(), "UTF-8");
+                    // フロントエンドのGoogle連携失敗ページなどへリダイレクト
+                    response.sendRedirect(
+                            frontendRedirectBaseUrl + "/google-calendar-auth-failed?error=" + encodedErrorMessage);
+                });
     }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -185,45 +184,25 @@ public class SecurityConfig {
         return new RestTemplate();
     }
 
+    // CustomOAuth2UserService はDBに何も保存しないため、依存性なし
     @Bean
     public OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService() {
-        // CustomOAuth2UserServiceのコンストラクタにPasswordEncoderを追加して渡す
-        return new CustomOAuth2UserService(googleAuthTokenRepository, appUserRepository, jwtTokenProvider,
-                passwordEncoder);
+        return new CustomOAuth2UserService();
     }
 
-    // OAuth2認証成功時のハンドラー
-    // Google認証成功後、JWTトークンを生成し、フロントエンドにリダイレクト
+    // Googleカレンダー連携のためのOAuth2認証成功ハンドラー
+    // ここではJWTを発行せず、単にフロントエンドにリダイレクトして、
+    // フロントエンド側でGoogleアクセストークン（クライアント側で管理）を使ってAPIを叩けるようにする。
     @Bean
-    public AuthenticationSuccessHandler authenticationSuccessHandler() {
+    public AuthenticationSuccessHandler googleCalendarOAuth2SuccessHandler() {
         return (request, response, authentication) -> {
-            // Googleログインの人かチェック。
-            if (!(authentication instanceof OAuth2AuthenticationToken)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
-                return;
-            }
+            logger.info("Google Calendar OAuth2 認証成功！");
 
-            // GoogleのID（番号）をもらうよ。
-            String googleId = ((OAuth2User) authentication.getPrincipal()).getName();
-
-            // GoogleのIDから、Googleのログイン情報（GoogleAuthToken）を見つけるよ。
-            // これがないと、どのAppUserに紐づくか分からないよ。
-            GoogleAuthToken googleAuthToken = googleAuthTokenRepository.findByGoogleSubId(googleId)
-                    .orElseThrow(() -> new IllegalStateException("Googleログイン情報が見つかりません。"));
-
-            // Googleのログイン情報から、アプリのユーザーのIDをもらう
-            Long appUserId = googleAuthToken.getAppUser().getId();
-
-            // アプリのユーザーIDを使って、アプリのユーザー（AppUser）を見つけるよ。
-            // これがないと、UserDetailsをロードできないよ。
-            AppUser appUser = appUserRepository.findById(appUserId)
-                    .orElseThrow(() -> new IllegalStateException("アプリのユーザーが見つかりません。"));
-
-            String secretPass = jwtTokenProvider.generateToken(authentication);
-
-            // 「秘密のパス」を持って、ウェブサイトの別の場所へ行ってもらうよ。
-            String goToUrl = "https://my-frontimage-14467698004.asia-northeast1.run.app/callback?token=" + secretPass;
-            response.sendRedirect(goToUrl);
+            // Google認証成功後、直接フロントエンドのリダイレクトURLへ送り返す。
+            // ここではバックエンドのJWTは発行しない。
+            // フロントエンドはここでGoogleから受け取ったアクセストークンを
+            // 自前で取得・管理・利用する想定。
+            response.sendRedirect(frontendRedirectBaseUrl + "/roadmap");
         };
     }
 }

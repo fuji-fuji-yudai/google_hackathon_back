@@ -5,17 +5,17 @@ import com.example.google.google_hackathon.service.GoogleCalendarService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication; // 認証情報を取得するために追加
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.slf4j.Logger; // ロギングを追加
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException; // 日時パースエラーのために追加
+import java.time.format.DateTimeParseException;
 
 @RestController
-@RequestMapping("/api/calendar") // 新しいエンドポイントパス
+@RequestMapping("/api/calendar")
 public class CalendarController {
 
         private static final Logger logger = LoggerFactory.getLogger(CalendarController.class);
@@ -23,30 +23,42 @@ public class CalendarController {
         @Autowired
         private GoogleCalendarService googleCalendarService;
 
-        // Google Calendarにイベントを作成するエンドポイント
+        /**
+         * Google Calendarにイベントを作成するエンドポイント
+         * フロントエンドからGoogleのアクセストークンを直接受け取ります。
+         *
+         * @param authentication    JWT認証情報（ロギングなど、アプリケーション独自の認証が必要な場合のみ使用）
+         * @param googleAccessToken Google APIにアクセスするためのアクセストークン
+         * @param eventRequest      イベントの詳細情報
+         * @return イベント作成の結果
+         */
         @PostMapping("/events")
         public ResponseEntity<String> createCalendarEvent(
-                        // ★修正: @RegisteredOAuth2AuthorizedClient を削除し、Authentication を受け取るように変更
-                        // JWT認証フローでは、アクセストークンはDBに保存されているため、ここで直接受け取らない
-                        Authentication authentication,
-                        @RequestBody CalendarEventRequest eventRequest) { // リクエストボディでイベント情報を受け取る
-                logger.info("イベント作成リクエストを受け付けました。ユーザー: {}", authentication.getName());
+                        Authentication authentication, // アプリケーション独自のJWT認証情報（ログ目的などで残す）
+                        @RequestHeader("X-Google-Access-Token") String googleAccessToken, // Googleのアクセストークンをヘッダーから受け取る
+                        @RequestBody CalendarEventRequest eventRequest) {
+
+                logger.info("イベント作成リクエストを受け付けました。ユーザー: {}。Googleアクセストークン提供済み。",
+                                authentication != null ? authentication.getName() : "匿名");
+
                 try {
+                        // CalendarEventRequestのゲッターが存在すると仮定
                         // 文字列からLocalDateTimeに変換
                         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
-                        LocalDateTime startDateTime = LocalDateTime.parse(eventRequest.getStartDateTimeStr(),
+                        LocalDateTime startDateTime = LocalDateTime.parse(eventRequest.getStartDateTimeStr(), // ★修正:
+                                                                                                              // getStartDateTimeStr()
                                         formatter);
-                        LocalDateTime endDateTime = LocalDateTime.parse(eventRequest.getEndDateTimeStr(), formatter);
+                        LocalDateTime endDateTime = LocalDateTime.parse(eventRequest.getEndDateTimeStr(), formatter); // ★修正:
+                                                                                                                      // getEndDateTimeStr()
 
-                        // ★修正: authorizedClient を渡す代わりに、authentication オブジェクトをサービスに渡す
-                        // サービス側で appUser の ID を使って GoogleAuthToken から accessToken を取得する
+                        // GoogleCalendarServiceにGoogleアクセストークン文字列を直接渡す
                         JsonNode response = googleCalendarService.createGoogleCalendarEvent(
-                                        authentication, // 認証情報全体を渡す
-                                        eventRequest.getSummary(),
-                                        eventRequest.getDescription(),
+                                        googleAccessToken, // Googleのアクセストークンを直接渡す
+                                        eventRequest.getSummary(), // ★修正: getSummary()
+                                        eventRequest.getDescription(), // ★修正: getDescription()
                                         startDateTime,
                                         endDateTime,
-                                        eventRequest.getTimeZone());
+                                        eventRequest.getTimeZone()); // ★修正: getTimeZone()
 
                         if (response != null && response.has("htmlLink")) {
                                 logger.info("イベント作成成功: {}", response.get("htmlLink").asText());
@@ -65,23 +77,36 @@ public class CalendarController {
                 }
         }
 
-        // Google Calendarのイベントをリストするエンドポイント
+        /**
+         * Google Calendarのイベントをリストするエンドポイント
+         * フロントエンドからGoogleのアクセストークンを直接受け取ります。
+         *
+         * @param authentication    JWT認証情報（ロギングなど、アプリケーション独自の認証が必要な場合のみ使用）
+         * @param googleAccessToken Google APIにアクセスするためのアクセストークン
+         * @param timeMinStr        期間の開始時刻文字列
+         * @param timeMaxStr        期間の終了時刻文字列
+         * @param timeZone          タイムゾーン
+         * @return イベントリスト
+         */
         @GetMapping("/events")
         public ResponseEntity<JsonNode> listCalendarEvents(
-                        // ★修正: @RegisteredOAuth2AuthorizedClient を削除し、Authentication を受け取るように変更
-                        Authentication authentication,
+                        Authentication authentication, // アプリケーション独自のJWT認証情報（ログ目的などで残す）
+                        @RequestHeader("X-Google-Access-Token") String googleAccessToken, // Googleのアクセストークンをヘッダーから受け取る
                         @RequestParam(defaultValue = "2025-01-01T00:00") String timeMinStr,
                         @RequestParam(defaultValue = "2025-12-31T23:59") String timeMaxStr,
                         @RequestParam(defaultValue = "Asia/Tokyo") String timeZone) {
-                logger.info("イベント一覧リクエストを受け付けました。ユーザー: {}", authentication.getName());
+
+                logger.info("イベント一覧リクエストを受け付けました。ユーザー: {}。Googleアクセストークン提供済み。",
+                                authentication != null ? authentication.getName() : "匿名");
+
                 try {
                         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
                         LocalDateTime timeMin = LocalDateTime.parse(timeMinStr, formatter);
                         LocalDateTime timeMax = LocalDateTime.parse(timeMaxStr, formatter);
 
-                        // ★修正: authorizedClient を渡す代わりに、authentication オブジェクトをサービスに渡す
+                        // GoogleCalendarServiceにGoogleアクセストークン文字列を直接渡す
                         JsonNode events = googleCalendarService.listGoogleCalendarEvents(
-                                        authentication, timeMin, timeMax, timeZone);
+                                        googleAccessToken, timeMin, timeMax, timeZone); // Googleのアクセストークンを直接渡す
 
                         if (events != null) {
                                 logger.info("イベント一覧取得成功。");
