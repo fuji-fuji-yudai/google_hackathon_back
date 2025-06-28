@@ -37,6 +37,64 @@ public class TaskService {
         taskManageRepository.saveAll(tasks);
     }
 
+    // タスクを削除する
+    public void deleteTask(Integer taskId, boolean deleteChildren) {
+        if (taskId == null) {
+            throw new IllegalArgumentException("タスクIDがnullです");
+        }
+
+        // 削除対象のタスクが存在するかチェック
+        if (!taskManageRepository.existsById(taskId)) {
+            throw new IllegalArgumentException("指定されたタスクが存在しません: " + taskId);
+        }
+
+        if (deleteChildren) {
+            // 子タスクも含めて全て削除
+            deleteTaskWithChildren(taskId);
+        } else {
+            // 子タスクの親IDをnullにしてから親タスクを削除
+            deleteTaskWithoutChildren(taskId);
+        }
+
+        System.out.println("タスク削除完了: ID " + taskId + " (子タスクも削除: " + deleteChildren + ")");
+    }
+
+    // 子タスクも含めて再帰的に削除
+    private void deleteTaskWithChildren(Integer taskId) {
+        // 子タスクを取得
+        List<Task> childTasks = taskManageRepository.findByParentId(taskId);
+        
+        // 子タスクがある場合は再帰的に削除
+        for (Task child : childTasks) {
+            deleteTaskWithChildren(child.getId());
+        }
+        
+        // 最後に自分自身を削除
+        taskManageRepository.deleteById(taskId);
+        System.out.println("タスク削除: ID " + taskId);
+    }
+
+    // 子タスクの親IDをnullにしてから親タスクを削除
+    private void deleteTaskWithoutChildren(Integer taskId) {
+        // 子タスクを取得
+        List<Task> childTasks = taskManageRepository.findByParentId(taskId);
+        
+        // 子タスクの親IDをnullに設定
+        for (Task child : childTasks) {
+            child.setParentId(null);
+            System.out.println("子タスクの親ID解除: " + child.getTitle() + " (ID: " + child.getId() + ")");
+        }
+        
+        // 子タスクを保存
+        if (!childTasks.isEmpty()) {
+            taskManageRepository.saveAll(childTasks);
+        }
+        
+        // 親タスクを削除
+        taskManageRepository.deleteById(taskId);
+        System.out.println("親タスク削除: ID " + taskId);
+    }
+
     // Entity → DTO の変換
     private TaskDto toDto(Task task) {
         TaskDto dto = new TaskDto();
