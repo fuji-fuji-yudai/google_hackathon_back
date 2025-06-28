@@ -15,6 +15,7 @@ com\example\google\google_hackathon\service\SimilarityService$SimilarMessage.cla
 com\example\google\google_hackathon\dto\ReminderRequest.class
 com\example\google\google_hackathon\entity\GoogleAuthToken$GoogleAuthTokenBuilder.class
 com\example\google\google_hackathon\repository\FeedbackRepository.class
+com\example\google\google_hackathon\controller\RoadmapCategoryController.class
 com\example\google\google_hackathon\security\JwtTokenProvider.class
 com\example\google\google_hackathon\entity\RoadmapEntry.class
 com\example\google\google_hackathon\controller\RoadmapEntryController.class
@@ -43,6 +44,7 @@ com\example\google\google_hackathon\service\GeminiService.class
 com\example\google\google_hackathon\dto\QuestionRequest.class
 com\example\google\google_hackathon\service\ReminderService.class
 com\example\google\google_hackathon\config\WebSocketConfig$1.class
+com\example\google\google_hackathon\service\RoadmapCategoryService.class
 com\example\google\google_hackathon\dto\SimilarMessageDTO.class
 com\example\google\google_hackathon\controller\ReflectionSummaryControllerByFuji.class
 com\example\google\google_hackathon\dto\RoadmapRequestDto.class
