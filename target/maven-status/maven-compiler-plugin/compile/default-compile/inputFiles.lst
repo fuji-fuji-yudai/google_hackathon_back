@@ -1,5 +1,7 @@
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\FirestoreConfig.java
+C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\JacksonConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\model\ChatMessage.java
+C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\PasswordEncoderConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\SecurityConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebConfig.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\config\WebSocketConfig.java
@@ -16,6 +18,7 @@ C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\examp
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\ReflectionSummaryControllerByFuji.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\ReminderController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\RoadMapByGeminiController.java
+C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\RoadmapCategoryController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\RoadmapEntryController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\RoomController.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\controller\TaskManageController.java
@@ -68,11 +71,13 @@ C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\examp
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\ExcelAnalyzerService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\FirestoreService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\GeminiService.java
+C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\GoogleAuthException.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\GoogleCalendarService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\reflection\FeedbackService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\reflection\ReflectionService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\ReflectionSummaryService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\ReminderService.java
+C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\RoadmapCategoryService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\RoadmapService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\RoomService.java
 C:\Users\MihoKoyama\Desktop\Google\google_hackathon_back\src\main\java\com\example\google\google_hackathon\service\SimilarityService.java

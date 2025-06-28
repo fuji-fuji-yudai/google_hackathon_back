@@ -3,6 +3,7 @@ package com.example.google.google_hackathon.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import com.example.google.google_hackathon.listener.ChatMessageListener;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @EntityListeners(ChatMessageListener.class)
 @Entity
@@ -16,7 +17,9 @@ public class ChatMessageEntity {
     private String sender;
     private String text;
     private String roomId;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime timestamp;
+
 
     // --- Getters ---
     public Long getId() {

@@ -1,57 +1,74 @@
 package com.example.google.google_hackathon.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "google_auth_tokens")
-@Data // Getter, Setter, toString, equals, hashCode を自動生成
+@Table(name = "google_auth_tokens", schema = "auth")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class GoogleAuthToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // AppUserへの参照（ユーザーとトークンを紐付ける）
-    // OneToOneリレーションシップで、user_idカラムを外部キーとして指定
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
-    private AppUser appUser;
+    // ★修正: DBのカラム名 'app_user_id' に正確に合わせます。
+    // unique = true はDBの定義に合わせます。
+    @Column(name = "app_user_id", nullable = false, unique = true)
+    private Long appUserId;
 
-    @Column(name = "google_id", unique = true, nullable = false) // GoogleのユーザーID (subクレーム) を保存
-    private String googleId;
+    // ★修正: DBのカラム名 'google_id' に正確に合わせます。
+    // AppUserRepositoryのクエリが 'googleSubId' を参照するため、Javaフィールド名は 'googleSubId' のまま、
+    // DBへのマッピングで 'google_id' を指定します。
+    @Column(name = "google_id", unique = true, nullable = false)
+    private String googleSubId;
 
-    @Column(name = "access_token", length = 2048, nullable = false) // アクセストークンは長くなる可能性があるので、長めに設定
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String accessToken;
 
-    @Column(name = "refresh_token", length = 2048) // リフレッシュトークンは取得できない場合もあるためnullable
+    // DBにはrefresh_token列がありますが、現行のOAuth2UserRequestから取得できないため、コードからはnullをセットします。
+    @Column(columnDefinition = "TEXT")
     private String refreshToken;
 
-    @Column(name = "expiry_date", nullable = false) // トークンの有効期限
+    // ★修正: DBのカラム名 'expiry_date' に正確に合わせ、型を LocalDateTime に変更します。
+    @Column(name = "expiry_date")
     private LocalDateTime expiryDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String scope;
+
+    @Column(length = 50)
+    private String tokenType;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // エンティティが永続化される直前に実行されるコールバック
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now(); // 作成時も更新時も初期設定
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    // エンティティが更新される直前に実行されるコールバック
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 }
