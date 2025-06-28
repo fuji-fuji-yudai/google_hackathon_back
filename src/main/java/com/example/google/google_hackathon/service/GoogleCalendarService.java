@@ -51,10 +51,6 @@ public class GoogleCalendarService {
     private final ObjectMapper objectMapper;
     private byte[] serviceAccountKeyBytes; // サービスアカウントキーのバイト配列
 
-    // 注意: プロジェクトIDは環境変数から取得することも検討してください
-    // @Value("${GOOGLE_CLOUD_PROJECT}")
-    // private String projectId;
-
     public GoogleCalendarService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
@@ -65,27 +61,39 @@ public class GoogleCalendarService {
      */
     @PostConstruct
     public void init() throws IOException {
+        // @Valueによって注入された serviceAccountSecretId の値を確認
+        logger.info("serviceAccountSecretId (from @Value): [{}]", serviceAccountSecretId);
+        logger.info("delegatedUserEmail (from @Value): [{}]", delegatedUserEmail);
+
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
-            // サービスアカウントキーの取得
             logger.info("サービスアカウントキーをSecret Managerから取得中。Secret ID: {}", serviceAccountSecretId);
 
+            // 重要: ここに記載されているプロジェクトIDが、実際にCloud Runがデプロイされている
+            // Google Cloud プロジェクトのIDと完全に一致しているか、**再度、慎重に確認してください**。
+            // スペースや誤字脱字がないか、GCPコンソールで確認することをお勧めします。
+            String projectId = "nomadic-bison-459812-a8"; // あなたのプロジェクトID
+
             SecretVersionName serviceAccountKeyName = SecretVersionName.newBuilder()
-                    // ここに実際のGoogle CloudプロジェクトIDを記述します
-                    // 環境変数から取得する場合は上記コメントアウトしたprojectIdフィールドを使用
-                    .setProject("nomadic-bison-459812-a8")
-                    .setSecret(serviceAccountSecretId) // ここに "calendar-service-account-key" が入ることを期待
+                    .setProject(projectId)
+                    .setSecret(serviceAccountSecretId)
                     .setSecretVersion("latest")
                     .build();
+
+            // 構築されたSecret Version Nameの文字列を確認
+            logger.info("Constructed Secret Version Name: [{}]", serviceAccountKeyName.toString());
 
             AccessSecretVersionResponse keyResponse = client.accessSecretVersion(serviceAccountKeyName);
             this.serviceAccountKeyBytes = keyResponse.getPayload().getData().toByteArray();
             logger.info("サービスアカウントキーを正常に取得しました。");
 
-            // 委任ユーザーのメールアドレスは@Valueで直接注入されるため、Secret Managerからの取得は不要
-            logger.info("委任ユーザーのメールアドレス (直接注入): {}", delegatedUserEmail);
-
         } catch (Exception e) {
             logger.error("Secret Managerからの認証情報取得中にエラーが発生しました: {}", e.getMessage(), e);
+            // エラーの詳細をログに出力し、原因究明を助ける
+            if (e.getCause() instanceof java.util.IllegalFormatWidthException) {
+                logger.error(
+                        "詳細: IllegalFormatWidthExceptionが発生しました。これは通常、Secret Managerのパス構築（プロジェクトIDやシークレット名）に問題があることを示唆しています。",
+                        e.getCause());
+            }
             throw new IOException("Failed to retrieve credentials from Secret Manager", e);
         }
     }
