@@ -105,10 +105,12 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/reflections/**").authenticated()
                         .requestMatchers("/api/roadmap/generate").permitAll()
+                        
 
                         // Google Calendar API 連携のエンドポイントは認証が必要
                         // ここでアプリケーション独自のJWT認証を要求する
-                        .requestMatchers("/api/calendar/**").authenticated())
+                        .requestMatchers("/api/calendar/**").authenticated()
+                        .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> {
                             logger.warn("認証されていないリクエストが拒否されました: URI={}, 例外={}: {}",
