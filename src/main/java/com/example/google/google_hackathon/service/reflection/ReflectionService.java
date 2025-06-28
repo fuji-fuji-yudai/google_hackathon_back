@@ -167,13 +167,13 @@ public class ReflectionService {
           String text = responseParts .get(0).getAsJsonObject().get("text").getAsString();
           System.out.println("text: " + text);
 
-          String textCleaned = text.replace("```json\\n", "").replace("\\n```", "");
+          String textCleaned = text.replace("```json", "").replace("```", "");
           System.out.println("textCleaned: " + textCleaned);
 
           String textJsonString = textCleaned.replace("\\n", "\n").replace("\\\"", "\"");
           System.out.println("textJsonString: " + textJsonString);
           // text は JSON 文字列なので、さらにパース
-          JsonObject summaryJson = JsonParser.parseString(textJsonString).getAsJsonObject();
+          JsonObject summaryJson = JsonParser.parseString(textCleaned).getAsJsonObject();
           System.out.println("summaryJson: " + summaryJson);
 
           String activitySummary = summaryJson.get("activity_summary").getAsString();
