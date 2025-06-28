@@ -12,6 +12,6 @@ public class ReminderResponse {
     private LocalDate remindDate;
     private LocalTime remindTime;
     private String description;
-    private Boolean isCompleted;
+    private String status;
     private String username; // 必要に応じて、誰のリマインダーか示すために含める
 }

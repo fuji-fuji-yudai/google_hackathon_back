@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+//import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Data
 public class ReminderRequest {
@@ -21,7 +21,5 @@ public class ReminderRequest {
     private LocalTime remindTime;
 
     private String description;
-
-    @JsonProperty("status")
-    private Boolean isCompleted; // 更新時などに使用するステータス//
+    private String status;
 }
