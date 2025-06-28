@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+//追加で設定
 @Configuration
 public class JacksonConfig {
     @Bean
