@@ -45,7 +45,7 @@ public class GoogleCalendarService {
     private String serviceAccountSecretId;
 
     // 委任ユーザーのメールアドレスが格納されているシークレットのID
-    @Value("${google.delegate-email.secret-id}") // 新しいプロパティ名
+    @Value("${google.service-account.user-email}") // 新しいプロパティ名
     private String delegateEmailSecretId; // 新しいフィールド
 
     private final ObjectMapper objectMapper;
