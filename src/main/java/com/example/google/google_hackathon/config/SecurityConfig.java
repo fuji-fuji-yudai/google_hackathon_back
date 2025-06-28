@@ -136,14 +136,11 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(oAuth2UserService()) // カスタムOAuth2UserServiceを登録 (別途定義されているはず)
                         )
-                        // ★ここを修正しました★ 認証成功時のハンドラーをインラインで定義し、フロントエンドにリダイレクト
+                        // 認証成功時のハンドラーをインラインで定義し、フロントエンドにリダイレクト
                         .successHandler((request, response, authentication) -> {
                             logger.info("OAuth2 Login Success! User: {}", authentication.getName());
-                            // ここにあなたのVue.jsフロントエンドのReminderViewへの正確なURLを設定してください
-                            // application.propertiesから読み込む場合は frontendRedirectBaseUrl + "/reminder-view"
-                            // のように
-                            response.sendRedirect(
-                                    "https://my-frontimage-14467698004.asia-northeast1.run.app/reminder-view");
+
+                            response.sendRedirect("https://my-frontimage-14467698004.asia-northeast1.run.app/roadmap");
                         })
                         .failureHandler((request, response, exception) -> {
                             logger.error("OAuth2 Login Failed: {} URI: {}", exception.getMessage(),
@@ -214,8 +211,8 @@ public class SecurityConfig {
             GoogleAuthToken googleAuthToken = googleAuthTokenRepository.findByGoogleSubId(googleId)
                     .orElseThrow(() -> new IllegalStateException("Googleログイン情報が見つかりません。"));
 
-            // Googleのログイン情報から、アプリのユーザーのIDをもらうよ。
-            Long appUserId = googleAuthToken.getAppUserId();
+            // Googleのログイン情報から、アプリのユーザーのIDをもらう
+            Long appUserId = googleAuthToken.getAppUser().getId();
 
             // アプリのユーザーIDを使って、アプリのユーザー（AppUser）を見つけるよ。
             // これがないと、UserDetailsをロードできないよ。

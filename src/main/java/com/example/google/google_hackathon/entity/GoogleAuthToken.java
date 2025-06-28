@@ -5,6 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn; // @JoinColumn のために必要
+import jakarta.persistence.ManyToOne; //  @ManyToOne のために必要
+import jakarta.persistence.FetchType; // FetchType のために必要
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -27,25 +30,21 @@ public class GoogleAuthToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ★修正: DBのカラム名 'app_user_id' に正確に合わせます。
-    // unique = true はDBの定義に合わせます。
-    @Column(name = "app_user_id", nullable = false, unique = true)
-    private Long appUserId;
+    @ManyToOne(fetch = FetchType.LAZY) // デフォルトはEAGERですが、パフォーマンスのためにLAZYを推奨
+    @JoinColumn(name = "user_id", nullable = false, unique = true) // DBの 'user_id' カラムにマッピング
+    private AppUser appUser; // AppUserエンティティへの参照
 
-    // ★修正: DBのカラム名 'google_id' に正確に合わせます。
     // AppUserRepositoryのクエリが 'googleSubId' を参照するため、Javaフィールド名は 'googleSubId' のまま、
-    // DBへのマッピングで 'google_id' を指定します。
-    @Column(name = "google_id", unique = true, nullable = false)
+    // DBへのマッピングで 'google_sub_id' を指定します。
+    @Column(name = "google_sub_id", unique = true, nullable = false)
     private String googleSubId;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String accessToken;
 
-    // DBにはrefresh_token列がありますが、現行のOAuth2UserRequestから取得できないため、コードからはnullをセットします。
     @Column(columnDefinition = "TEXT")
     private String refreshToken;
 
-    // ★修正: DBのカラム名 'expiry_date' に正確に合わせ、型を LocalDateTime に変更します。
     @Column(name = "expiry_date")
     private LocalDateTime expiryDate;
 
