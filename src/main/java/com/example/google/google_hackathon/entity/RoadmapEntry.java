@@ -3,6 +3,7 @@ package com.example.google.google_hackathon.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "roadmap_entries", schema = "public")
@@ -11,6 +12,8 @@ public class RoadmapEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // AppUser への ManyToOne 関連に JsonIgnore を付ける
+    @JsonIgnore // このフィールドをJSONシリアライズ時に無視する
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;

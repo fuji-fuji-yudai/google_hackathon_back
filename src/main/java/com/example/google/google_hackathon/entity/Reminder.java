@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime; //LocalDateTimeをインポート
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "reminders", schema = "public")
@@ -21,6 +22,8 @@ public class Reminder {
     private Long id;
 
     // AppUserとの関連付け
+    // AppUser への ManyToOne 関連に JsonIgnore を付ける
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser appUser; // リマインダーの所有者
