@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -83,22 +84,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(Customizer.withDefaults()) // CORS設定を適用
+                .csrf(AbstractHttpConfigurer::disable) // CSRFを無効化
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // セッションをステートレスに設定
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers("/ws/**", "/topic/**", "/app/**").permitAll()
                         // OAuth2認証関連のURIをpermitAll()にする
+                        // GoogleからのコールバックURI (/oauth2/callback/*) は、ここに含まれるようにします
+                        // "/error" はWhitelabel Error Pageが表示される原因となるためpermitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/code/**", "/error").permitAll()
+
                         // ロードマップエントリ（/api/roadmap-entries）の設定
                         .requestMatchers(HttpMethod.GET, "/api/roadmap-entries").permitAll()
-                        // POST/PUT/DELETEは認証済みユーザーのみ
                         .requestMatchers(HttpMethod.POST, "/api/roadmap-entries").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/roadmap-entries/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/roadmap-entries/**").authenticated()
-                        // OPTIONSリクエストもCORSのために許可
-                        .requestMatchers(HttpMethod.OPTIONS, "/api/roadmap-entries/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/roadmap-entries/**").permitAll() // OPTIONSリクエストもCORSのために許可
 
                         // リマインダー（/api/reminders）の認証設定
                         .requestMatchers(HttpMethod.GET, "/api/reminders").authenticated()
@@ -111,14 +113,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tasks").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/tasks").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/api/tasks").permitAll()
-                        .requestMatchers("/api/reflections/**").authenticated() // 追加
+                        .requestMatchers("/api/reflections/**").authenticated()
                         .requestMatchers("/api/roadmap/generate").permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest().authenticated()) // その他の全てのリクエストは認証が必要
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, excep) -> {
                             logger.warn("認証されていないリクエストが拒否されました: URI={}, 例外={}: {}",
-                                    req.getRequestURI(), excep.getClass().getName(), excep.getMessage()); // ログを改善
-                            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"); // 401 Unauthorized を返す
+                                    req.getRequestURI(), excep.getClass().getName(), excep.getMessage());
+                            res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                         }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // JWTフィルターを通常認証フィルターの前に配置
                 // Google OAuth2 Login のための設定
@@ -127,23 +129,35 @@ public class SecurityConfig {
                                 .baseUri("/oauth2/authorization") // OAuth2認証を開始するURI (例: /oauth2/authorization/google)
                         )
                         .redirectionEndpoint(redirection -> redirection
-                                .baseUri("/oauth2/callback/*") // GoogleからのリダイレクトURIのパターン (例: /oauth2/callback/google)
-                        )
+                                // GoogleからのリダイレクトURIのパターン
+                                // 以前のエラーログで示された正確なURIに合わせて /oauth2/callback を使用
+                                // Spring Securityはこれを処理する
+                                .baseUri("/oauth2/callback"))
                         .userInfoEndpoint(userInfo -> userInfo
-                                .userService(oAuth2UserService()) // カスタムOAuth2UserServiceを登録
+                                .userService(oAuth2UserService()) // カスタムOAuth2UserServiceを登録 (別途定義されているはず)
                         )
-                        .successHandler(authenticationSuccessHandler()) // 認証成功時のハンドラー
+                        // ★ここを修正しました★ 認証成功時のハンドラーをインラインで定義し、フロントエンドにリダイレクト
+                        .successHandler((request, response, authentication) -> {
+                            logger.info("OAuth2 Login Success! User: {}", authentication.getName());
+                            // ここにあなたのVue.jsフロントエンドのReminderViewへの正確なURLを設定してください
+                            // application.propertiesから読み込む場合は frontendRedirectBaseUrl + "/reminder-view"
+                            // のように
+                            response.sendRedirect(
+                                    "https://my-frontimage-14467698004.asia-northeast1.run.app/reminder-view");
+                        })
                         .failureHandler((request, response, exception) -> {
                             logger.error("OAuth2 Login Failed: {} URI: {}", exception.getMessage(),
-                                    request.getRequestURI(), exception); // エラーログを改善
-                            // エラー発生時にフロントエンドのログインページにリダイレクト
-                            // エラーメッセージはURLエンコードして渡すのが安全
+                                    request.getRequestURI(), exception);
                             String encodedErrorMessage = java.net.URLEncoder.encode(exception.getMessage(), "UTF-8");
                             response.sendRedirect(
-                                    // frontendRedirectBaseUrl プロパティを使用
-                                    frontendRedirectBaseUrl + "/login?auth_failed=true&error=" + encodedErrorMessage);
+                                    // フロントエンドのログインページにリダイレクト
+                                    // frontendRedirectBaseUrl を使用する場合
+                                    // frontendRedirectBaseUrl + "/login?auth_failed=true&error=" +
+                                    // encodedErrorMessage);
+                                    "https://my-frontimage-14467698004.asia-northeast1.run.app/login?auth_failed=true&error="
+                                            + encodedErrorMessage);
                         }))
-                .build();
+                .build(); // http.build() を最後に呼び出す
     }
 
     @Bean
@@ -154,8 +168,6 @@ public class SecurityConfig {
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // http://localhost:3000 を許可オリジンに追加しました。
-        // フロントエンド開発で一般的に使用されるため、これがないとCORSエラーが発生します。
         configuration.setAllowedOrigins(List.of(
                 "https://my-frontimage-14467698004.asia-northeast1.run.app",
                 "http://localhost:8081",
@@ -176,14 +188,6 @@ public class SecurityConfig {
         return new RestTemplate();
     }
 
-    // ObjectMapper の Bean 定義（AppConfig.java に移動することを強く推奨しますが、このまま残す場合は新規追加）
-    // @Bean
-    // public ObjectMapper objectMapper() {
-    // return new ObjectMapper();
-    // }
-
-    // CustomOAuth2UserServiceのBean定義
-    // Google認証成功時にユーザー情報を処理し、GoogleAuthTokenを保存
     @Bean
     public OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2UserService() {
         // CustomOAuth2UserServiceのコンストラクタにPasswordEncoderを追加して渡す
