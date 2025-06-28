@@ -63,6 +63,89 @@ public class ExcelAnalyzerService {
     }
 
     /**
+     * ExcelからのタスクをDBに保存する（改良版）
+     */
+    public List<TaskDto> saveExcelTasks(List<TaskDto> taskDtos) {
+        logger.info("=== Excelタスクの保存開始 ===");
+        logger.info("保存対象タスク数: {}", taskDtos.size());
+
+        try {
+            // まず親タスク（parent_id が null のもの）を保存
+            List<TaskDto> parentTasks = taskDtos.stream()
+                    .filter(dto -> dto.parent_id == null)
+                    .collect(Collectors.toList());
+
+            logger.info("親タスク数: {}", parentTasks.size());
+
+            List<Task> savedParents = new ArrayList<>();
+            Map<Integer, Integer> oldToNewIdMap = new HashMap<>(); // 旧ID → 新IDのマッピング
+
+            // 親タスクを保存
+            for (TaskDto parentDto : parentTasks) {
+                Task parentEntity = convertToEntity(parentDto);
+                parentEntity.setId(null); // 新規作成のためIDをnullに設定
+
+                Task savedParent = taskManageRepository.save(parentEntity);
+                savedParents.add(savedParent);
+
+                // 旧IDと新IDのマッピングを記録
+                if (parentDto.id != null) {
+                    oldToNewIdMap.put(parentDto.id, savedParent.getId());
+                }
+
+                logger.info("親タスク保存: {} -> 新ID: {}", parentDto.title, savedParent.getId());
+            }
+
+            // 次に子タスクを保存
+            List<TaskDto> childTasks = taskDtos.stream()
+                    .filter(dto -> dto.parent_id != null)
+                    .collect(Collectors.toList());
+
+            logger.info("子タスク数: {}", childTasks.size());
+
+            List<Task> savedChildren = new ArrayList<>();
+
+            for (TaskDto childDto : childTasks) {
+                Task childEntity = convertToEntity(childDto);
+                childEntity.setId(null); // 新規作成のためIDをnullに設定
+
+                // 親IDを新しいIDに変換
+                Integer newParentId = oldToNewIdMap.get(childDto.parent_id);
+                if (newParentId != null) {
+                    childEntity.setParentId(newParentId);
+                    logger.info("子タスク: {} -> 親ID: {} -> 新親ID: {}",
+                            childDto.title, childDto.parent_id, newParentId);
+                } else {
+                    logger.warn("親タスクが見つかりません。親IDをnullに設定: {}", childDto.title);
+                    childEntity.setParentId(null);
+                }
+
+                Task savedChild = taskManageRepository.save(childEntity);
+                savedChildren.add(savedChild);
+
+                logger.info("子タスク保存: {} -> 新ID: {}", childDto.title, savedChild.getId());
+            }
+
+            // 保存されたタスクをすべて結合
+            List<Task> allSavedTasks = new ArrayList<>();
+            allSavedTasks.addAll(savedParents);
+            allSavedTasks.addAll(savedChildren);
+
+            logger.info("=== 保存完了 ===");
+            logger.info("総保存タスク数: {}", allSavedTasks.size());
+
+            // DTOに変換して返す
+            return allSavedTasks.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            logger.error("Excelタスクの保存中にエラーが発生しました", e);
+            throw new RuntimeException("タスクの保存に失敗しました: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Excelファイルを解析してMap形式で返す
      */
     private Map<String, Object> readExcelFile(InputStream inputStream) throws IOException {
@@ -432,7 +515,6 @@ public class ExcelAnalyzerService {
         }
     }
 
-
     /**
      * Excelデータから機能特性を分析
      */
@@ -772,19 +854,6 @@ public class ExcelAnalyzerService {
                 return Collections.emptyList();
             }
         }
-    }
-
-    // 以下、既存のDB操作メソッドをそのまま維持
-    public List<TaskDto> saveExcelTasks(List<TaskDto> taskDtos) {
-        List<Task> tasks = taskDtos.stream()
-                .map(this::convertToEntity)
-                .collect(Collectors.toList());
-
-        List<Task> savedTasks = taskManageRepository.saveAll(tasks);
-
-        return savedTasks.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
     }
 
     private Task convertToEntity(TaskDto dto) {
