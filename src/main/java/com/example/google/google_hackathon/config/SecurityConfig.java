@@ -177,10 +177,10 @@ public class SecurityConfig {
     }
 
     // ObjectMapper の Bean 定義（AppConfig.java に移動することを強く推奨しますが、このまま残す場合は新規追加）
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
+    // @Bean
+    // public ObjectMapper objectMapper() {
+    // return new ObjectMapper();
+    // }
 
     // CustomOAuth2UserServiceのBean定義
     // Google認証成功時にユーザー情報を処理し、GoogleAuthTokenを保存
