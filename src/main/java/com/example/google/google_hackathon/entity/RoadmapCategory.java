@@ -8,7 +8,7 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime; // LocalDateTime をインポート
 
 @Entity
-@Table(name = "roadmap_categories") // テーブル名を指定
+@Table(name = "roadmap_categories", schema = "public") // テーブル名を指定
 @Getter
 @Setter
 @NoArgsConstructor
