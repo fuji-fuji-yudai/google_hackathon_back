@@ -93,7 +93,7 @@ public class ReminderController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> createReminder( // ★型を<?>に修正★
+    public ResponseEntity<?> createReminder(
             @Valid @RequestBody ReminderRequest reminderRequest,
             @RequestParam(defaultValue = "false") boolean linkToGoogleCalendar) {
 
@@ -114,9 +114,10 @@ public class ReminderController {
 
         LocalDateTime startDateTime;
         try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
-            startDateTime = LocalDateTime.parse(reminderRequest.getRemindDate() + "T" + reminderRequest.getRemindTime(),
-                    formatter);
+            startDateTime = LocalDateTime.parse(
+                    reminderRequest.getRemindDate() + "T" + reminderRequest.getRemindTime(),
+                    DateTimeFormatter.ISO_LOCAL_DATE_TIME // 例: "2023-10-27T10:30"
+            );
         } catch (DateTimeParseException e) {
             logger.error("リマインダーの日付/時刻のパースエラー: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "日付または時刻の形式が不正です。"));
@@ -153,6 +154,7 @@ public class ReminderController {
                             createdReminder.getId());
                 } else {
                     logger.warn("Google Calendar Event は作成されましたが、イベントIDがレスポンスに含まれていませんでした。");
+                    return new ResponseEntity<>(convertToDto(createdReminder), HttpStatus.CREATED);
                 }
 
                 logger.info("リマインダー作成とGoogleカレンダー連携が完了しました。リマインダーID: {}", createdReminder.getId());
