@@ -6,11 +6,9 @@ public class ReflectionSummaryDtoByFuji {
     private String achievementSummary;
     private String improvementSummary;
 
-    // デフォルトコンストラクタ（Jackson用）
     public ReflectionSummaryDtoByFuji() {
     }
 
-    // 既存のコンストラクタ
     public ReflectionSummaryDtoByFuji(String yearMonth, String activitySummary, String achievementSummary, String improvementSummary) {
         this.yearMonth = yearMonth;
         this.activitySummary = activitySummary;
@@ -35,7 +33,7 @@ public class ReflectionSummaryDtoByFuji {
         return improvementSummary;
     }
 
-    // セッター（Jacksonが値をセットするために必要）
+    // ✅ セッターを追加
     public void setYearMonth(String yearMonth) {
         this.yearMonth = yearMonth;
     }
