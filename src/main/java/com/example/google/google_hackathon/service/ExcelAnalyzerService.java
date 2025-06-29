@@ -187,32 +187,6 @@ public class ExcelAnalyzerService {
         int lastRowNum = sheet.getLastRowNum();
         logger.info("シートの行範囲: {} ～ {}", firstRowNum, lastRowNum);
 
-        // 全行を強制スキャン（空行も含む）
-        logger.info("=== 全行スキャン開始 ===");
-        for (int rowIndex = 0; rowIndex <= Math.max(lastRowNum, 10); rowIndex++) {
-            Row row = sheet.getRow(rowIndex);
-            if (row != null) {
-                int firstCellNum = row.getFirstCellNum();
-                int lastCellNum = row.getLastCellNum();
-                logger.info("行{}: セル範囲 {} ～ {}, 物理セル数: {}",
-                        rowIndex, firstCellNum, lastCellNum, row.getPhysicalNumberOfCells());
-
-                // 各セルの内容を詳細チェック
-                for (int cellIndex = 0; cellIndex < Math.max(lastCellNum, 10); cellIndex++) {
-                    Cell cell = row.getCell(cellIndex);
-                    if (cell != null) {
-                        String cellValue = getCellValueAsString(cell);
-                        logger.info("セル[{},{}]: 型={}, 値='{}'",
-                                rowIndex, cellIndex, cell.getCellType(), cellValue);
-                    } else {
-                        logger.debug("セル[{},{}]: null", rowIndex, cellIndex);
-                    }
-                }
-            } else {
-                logger.debug("行{}: null", rowIndex);
-            }
-        }
-
         // ヘッダー行の取得（通常は0行目）
         Row headerRow = sheet.getRow(0);
         List<String> headers = new ArrayList<>();
@@ -224,7 +198,7 @@ public class ExcelAnalyzerService {
             for (int i = 0; i < Math.max(headerRow.getLastCellNum(), 20); i++) {
                 Cell cell = headerRow.getCell(i);
                 String headerValue = getCellValueAsString(cell);
-                logger.info("ヘッダー[{}]: '{}'", i, headerValue);
+                logger.debug("ヘッダー[{}]: '{}'", i, headerValue);
                 headers.add(headerValue);
             }
         } else {
@@ -236,7 +210,7 @@ public class ExcelAnalyzerService {
         for (int rowNum = 1; rowNum <= lastRowNum; rowNum++) {
             Row row = sheet.getRow(rowNum);
             if (row != null) {
-                logger.info("データ行{}を処理中...", rowNum);
+                logger.debug("データ行{}を処理中...", rowNum);
 
                 Map<String, String> rowData = new HashMap<>();
                 boolean hasData = false;
@@ -249,7 +223,7 @@ public class ExcelAnalyzerService {
 
                     if (value != null && !value.trim().isEmpty()) {
                         hasData = true;
-                        logger.info("データ発見 - 行{}列{}: ヘッダー='{}', 値='{}'", rowNum, i, header, value);
+                        logger.debug("データ発見 - 行{}列{}: ヘッダー='{}', 値='{}'", rowNum, i, header, value);
                     }
 
                     if (header != null && !header.trim().isEmpty()) {
@@ -259,9 +233,9 @@ public class ExcelAnalyzerService {
 
                 if (hasData) {
                     rows.add(rowData);
-                    logger.info("行{}をデータリストに追加: {}", rowNum, rowData);
+                    logger.debug("行{}をデータリストに追加: {}", rowNum, rowData);
                 } else {
-                    logger.warn("行{}にはデータが見つかりませんでした", rowNum);
+                    logger.debug("行{}にはデータが見つかりませんでした", rowNum);
                 }
             }
         }
@@ -287,12 +261,10 @@ public class ExcelAnalyzerService {
             switch (cell.getCellType()) {
                 case STRING:
                     String stringValue = cell.getStringCellValue().trim();
-                    logger.trace("セル[{},{}] STRING: '{}'", cell.getRowIndex(), cell.getColumnIndex(), stringValue);
                     return stringValue;
                 case NUMERIC:
                     if (DateUtil.isCellDateFormatted(cell)) {
                         String dateValue = cell.getLocalDateTimeCellValue().format(DATE_FORMATTER);
-                        logger.trace("セル[{},{}] DATE: '{}'", cell.getRowIndex(), cell.getColumnIndex(), dateValue);
                         return dateValue;
                     }
                     double numValue = cell.getNumericCellValue();
@@ -302,21 +274,16 @@ public class ExcelAnalyzerService {
                     } else {
                         numString = String.valueOf(numValue);
                     }
-                    logger.trace("セル[{},{}] NUMERIC: '{}'", cell.getRowIndex(), cell.getColumnIndex(), numString);
                     return numString;
                 case BOOLEAN:
                     String boolValue = String.valueOf(cell.getBooleanCellValue());
-                    logger.trace("セル[{},{}] BOOLEAN: '{}'", cell.getRowIndex(), cell.getColumnIndex(), boolValue);
                     return boolValue;
                 case FORMULA:
                     String formulaValue = cell.getCellFormula();
-                    logger.trace("セル[{},{}] FORMULA: '{}'", cell.getRowIndex(), cell.getColumnIndex(), formulaValue);
                     return formulaValue;
                 case BLANK:
-                    logger.trace("セル[{},{}] BLANK", cell.getRowIndex(), cell.getColumnIndex());
                     return "";
                 default:
-                    logger.trace("セル[{},{}] OTHER: ''", cell.getRowIndex(), cell.getColumnIndex());
                     return "";
             }
         } catch (Exception e) {
@@ -653,7 +620,7 @@ public class ExcelAnalyzerService {
     private String extractTaskJsonFromResponse(String responseBody) throws Exception {
         try {
             logger.info("=== Vertex AI API レスポンス分析開始 ===");
-            logger.info("レスポンス全体（最初の500文字）: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
+            logger.debug("レスポンス全体（最初の500文字）: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
 
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonArray candidates = json.getAsJsonArray("candidates");
@@ -663,12 +630,12 @@ public class ExcelAnalyzerService {
                 JsonArray partsArray = content.getAsJsonArray("parts");
                 String text = partsArray.get(0).getAsJsonObject().get("text").getAsString();
 
-                logger.info("抽出されたテキスト全体: {}", text);
+                logger.debug("抽出されたテキスト全体: {}", text);
 
                 // JSON部分のみを抽出（より堅牢な抽出ロジック）
                 String jsonText = extractJsonFromText(text);
                 if (jsonText != null) {
-                    logger.info("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
+                    logger.debug("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
 
                     // JSONの妥当性をチェック
                     try {
@@ -698,8 +665,8 @@ public class ExcelAnalyzerService {
      * テキストからJSON配列を抽出する改善されたメソッド
      */
     private String extractJsonFromText(String text) {
-        logger.info("=== JSON抽出開始 ===");
-        logger.info("抽出対象テキスト: {}", text);
+        logger.debug("=== JSON抽出開始 ===");
+        logger.debug("抽出対象テキスト: {}", text);
 
         // 複数のパターンでJSON抽出を試行
         String[] patterns = {
@@ -716,14 +683,14 @@ public class ExcelAnalyzerService {
             java.util.regex.Matcher m = p.matcher(text);
             if (m.find()) {
                 String found = m.group();
-                logger.info("パターン{}でマッチしました: {}", i + 1, found.substring(0, Math.min(100, found.length())) + "...");
+                logger.debug("パターン{}でマッチしました: {}", i + 1, found.substring(0, Math.min(100, found.length())) + "...");
 
                 // マークダウンマーカーを除去
                 found = found.replaceAll("```json|```", "").trim();
 
                 // 簡単な妥当性チェック
                 if (found.startsWith("[") && found.endsWith("]")) {
-                    logger.info("JSON形式チェック: OK");
+                    logger.debug("JSON形式チェック: OK");
                     return found;
                 } else {
                     logger.warn("JSON形式チェック: NG - '[' または ']' が見つからない");
@@ -734,12 +701,12 @@ public class ExcelAnalyzerService {
         }
 
         // フォールバック: 手動で最初の [から最後の ] まで抽出
-        logger.info("フォールバック抽出を試行");
+        logger.debug("フォールバック抽出を試行");
         int startIdx = text.indexOf('[');
         int endIdx = text.lastIndexOf(']');
         if (startIdx >= 0 && endIdx > startIdx) {
             String extracted = text.substring(startIdx, endIdx + 1);
-            logger.info("フォールバック抽出成功: {}", extracted.substring(0, Math.min(100, extracted.length())) + "...");
+            logger.debug("フォールバック抽出成功: {}", extracted.substring(0, Math.min(100, extracted.length())) + "...");
             return extracted;
         }
 
@@ -836,12 +803,12 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * JSON文字列をTaskDtoのリストに変換（tmp_id対応版）
+     * JSON文字列をTaskDtoのリストに変換（tmp_id強制設定版）
      */
     private List<TaskDto> parseTaskJson(String json) {
         try {
             logger.info("=== JSON解析開始 ===");
-            logger.info("解析対象JSON: {}", json);
+            logger.debug("解析対象JSON: {}", json);
 
             // 空文字列やnullのチェック
             if (json == null || json.trim().isEmpty()) {
@@ -868,11 +835,83 @@ public class ExcelAnalyzerService {
             logger.info("Gsonで解析されたタスク数: {}", taskArray.length);
 
             List<TaskDto> tasks = new ArrayList<>();
+            int autoTmpId = 1; // 自動採番用のカウンター
+            
+            // フェーズマッピング（タイトルからフェーズを判定）
+            Map<String, Integer> phaseMapping = Map.of(
+                "要件定義", 1,
+                "基本設計", 12,
+                "詳細設計", 23,
+                "実装", 34,
+                "結合テスト", 45,
+                "システムテスト", 51,
+                "リリース準備", 54
+            );
 
             for (int i = 0; i < taskArray.length; i++) {
                 TaskDto task = taskArray[i];
-                logger.debug("タスク{}: {} (tmp_id: {}, tmp_parent_id: {})", 
+                logger.debug("処理中タスク{}: {} (元tmp_id: {}, tmp_parent_id: {})", 
                     i + 1, task.title, task.tmp_id, task.tmp_parent_id);
+
+                // tmp_idが設定されていない場合は自動設定
+                if (task.tmp_id == null || task.tmp_id == 0) {
+                    // フェーズタスクかどうかを判定
+                    boolean isPhaseTask = task.title.contains("フェーズ");
+                    
+                    if (isPhaseTask) {
+                        // フェーズタスクの場合、フェーズ名から適切なtmp_idを設定
+                        for (Map.Entry<String, Integer> entry : phaseMapping.entrySet()) {
+                            if (task.title.contains(entry.getKey())) {
+                                task.tmp_id = entry.getValue();
+                                task.tmp_parent_id = null; // フェーズタスクは親なし
+                                break;
+                            }
+                        }
+                        
+                        // マッピングが見つからない場合は自動採番
+                        if (task.tmp_id == null) {
+                            task.tmp_id = autoTmpId++;
+                            task.tmp_parent_id = null;
+                        }
+                    } else {
+                        // 個別機能タスクの場合
+                        task.tmp_id = autoTmpId++;
+                        
+                        // 親フェーズを特定
+                        if (task.tmp_parent_id == null) {
+                            // タスク名からフェーズを推定
+                            for (Map.Entry<String, Integer> entry : phaseMapping.entrySet()) {
+                                if (task.title.contains(entry.getKey())) {
+                                    task.tmp_parent_id = entry.getValue();
+                                    break;
+                                }
+                            }
+                            
+                            // フェーズが特定できない場合、直前のフェーズタスクを親とする
+                            if (task.tmp_parent_id == null && i > 0) {
+                                // 直前のタスクから親を探す
+                                for (int j = i - 1; j >= 0; j--) {
+                                    TaskDto prevTask = taskArray[j];
+                                    if (prevTask.title.contains("フェーズ") && prevTask.tmp_id != null) {
+                                        task.tmp_parent_id = prevTask.tmp_id;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // tmp_idが設定されている場合、tmp_parent_idを確認
+                    if (task.tmp_parent_id == null && !task.title.contains("フェーズ")) {
+                        // 個別機能タスクなのに親が設定されていない場合
+                        for (Map.Entry<String, Integer> entry : phaseMapping.entrySet()) {
+                            if (task.title.contains(entry.getKey())) {
+                                task.tmp_parent_id = entry.getValue();
+                                break;
+                            }
+                        }
+                    }
+                }
 
                 // 必須フィールドの初期化
                 if (task.status == null || task.status.isEmpty()) {
@@ -888,10 +927,17 @@ public class ExcelAnalyzerService {
                     task.actual_end = "";
                 }
 
+                logger.debug("修正後タスク{}: {} (tmp_id: {}, tmp_parent_id: {})", 
+                    i + 1, task.title, task.tmp_id, task.tmp_parent_id);
+
                 tasks.add(task);
             }
 
             logger.info("最終的に作成されたタスク数: {}", tasks.size());
+            
+            // 階層構造の妥当性をチェック
+            validateTaskHierarchy(tasks);
+            
             return tasks;
         } catch (Exception e) {
             logger.error("JSONの解析に失敗しました: {}", e.getMessage());
@@ -906,6 +952,42 @@ public class ExcelAnalyzerService {
                 return Collections.emptyList();
             }
         }
+    }
+
+    /**
+     * タスク階層構造の妥当性をチェック
+     */
+    private void validateTaskHierarchy(List<TaskDto> tasks) {
+        Set<Integer> allTmpIds = tasks.stream()
+                .map(task -> task.tmp_id)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        
+        Set<Integer> parentIds = tasks.stream()
+                .map(task -> task.tmp_parent_id)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        
+        // 存在しない親を参照している子タスクを検出
+        Set<Integer> invalidParents = parentIds.stream()
+                .filter(parentId -> !allTmpIds.contains(parentId))
+                .collect(Collectors.toSet());
+        
+        if (!invalidParents.isEmpty()) {
+            logger.warn("存在しない親を参照している子タスクがあります: {}", invalidParents);
+            
+            // 無効な親参照を修正
+            tasks.forEach(task -> {
+                if (task.tmp_parent_id != null && invalidParents.contains(task.tmp_parent_id)) {
+                    logger.warn("タスク '{}' の親参照を修正: {} -> null", task.title, task.tmp_parent_id);
+                    task.tmp_parent_id = null; // 親なしタスクとして扱う
+                }
+            });
+        }
+        
+        logger.info("階層構造チェック完了 - フェーズタスク: {}個, 子タスク: {}個", 
+            tasks.stream().filter(t -> t.tmp_parent_id == null).count(),
+            tasks.stream().filter(t -> t.tmp_parent_id != null).count());
     }
 
     /**
