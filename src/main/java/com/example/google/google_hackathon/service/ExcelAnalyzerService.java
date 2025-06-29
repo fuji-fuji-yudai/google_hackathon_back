@@ -114,33 +114,26 @@ public class ExcelAnalyzerService {
 
             logger.info("子タスク数: {}", childTasks.size());
 
+            // 保存処理の修正（子タスク部分）
             for (TaskDto dto : childTasks) {
                 Task entity = convertToEntity(dto);
                 entity.setId(null); // 自動採番
                 entity.setTmpId(dto.tmp_id);
 
-                // 親IDの解決
+                // 親IDの解決と設定
                 Integer realParentId = tmpIdToRealIdMap.get(dto.tmp_parent_id);
                 if (realParentId != null) {
-                    entity.setParentId(realParentId);
+                    entity.setParentId(realParentId); // ✅ ここで正しい親IDを設定
                     logger.info("子タスク親ID設定: {} -> tmp_parent_id:{} -> real_parent_id:{}",
                             dto.title, dto.tmp_parent_id, realParentId);
                 } else {
+                    entity.setParentId(null);
                     logger.error("親タスクが見つからない: {} -> tmp_parent_id:{}",
                             dto.title, dto.tmp_parent_id);
-                    logger.error("利用可能なtmp_id: {}", tmpIdToRealIdMap.keySet());
-                    // 親が見つからない場合はnullにして続行
-                    entity.setParentId(null);
                 }
 
                 Task saved = taskManageRepository.save(entity);
                 allSavedTasks.add(saved);
-
-                if (dto.tmp_id != null) {
-                    tmpIdToRealIdMap.put(dto.tmp_id, saved.getId());
-                    logger.info("子タスクIDマッピング: tmp_id:{} -> real_id:{} ({})",
-                            dto.tmp_id, saved.getId(), dto.title);
-                }
             }
 
             // Step 3: 保存結果の確認
@@ -948,13 +941,9 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * DTO → Entity の変換（tmp_id対応版・デバッグ強化）
+     * DTO → Entity の変換（修正版：parentIdは設定しない）
      */
     private Task convertToEntity(TaskDto dto) {
-        logger.info("=== convertToEntity開始 ===");
-        logger.info("DTO: title='{}', tmp_id={}, tmp_parent_id={}, parent_id={}",
-                dto.title, dto.tmp_id, dto.tmp_parent_id, dto.parent_id);
-
         Task task = new Task();
         if (dto.id != null && dto.id > 0) {
             task.setId(dto.id);
@@ -966,14 +955,11 @@ public class ExcelAnalyzerService {
         task.setActual_start(parseDate(dto.actual_start));
         task.setActual_end(parseDate(dto.actual_end));
         task.setStatus(dto.status);
-        task.setParentId(dto.parent_id);
 
-        // 追加: tmp_id の設定
+        // ❌ 削除: task.setParentId(dto.parent_id); // DTOのparent_idは常にnull
+
+        // tmp_id の設定
         task.setTmpId(dto.tmp_id);
-
-        logger.info("Entity: title='{}', tmpId={}, parentId={}",
-                task.getTitle(), task.getTmpId(), task.getParentId());
-        logger.info("=== convertToEntity完了 ===");
 
         return task;
     }
