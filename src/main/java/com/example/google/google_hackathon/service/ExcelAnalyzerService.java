@@ -388,116 +388,34 @@ public class ExcelAnalyzerService {
         logger.info("抽出された機能一覧: {}", functionList);
 
         return String.format("""
-                あなたはプロジェクト管理とソフトウェア開発のエキスパートです。
-                提供されたExcelファイルから抽出した機能一覧を基に、各開発フェーズごとの階層構造を持つWBSを生成してください。
+                あなたはプロジェクト管理のエキスパートです。
+                Excelファイルから抽出した機能一覧を基に、各開発フェーズごとのWBSを生成してください。
 
                 【抽出された機能一覧】
                 %s
 
-                【生成する階層構造】
-                1. 各開発フェーズを親タスクとして作成
-                2. 各フェーズの下に、全ての機能に対応する子タスクを作成
+                【生成ルール】
+                以下の6つのフェーズ × 機能数のタスクを生成：
+                1. 要件定義フェーズ (tmp_id: 1) → 各機能の要件定義 (tmp_id: 11, 12, 13...)
+                2. 基本設計フェーズ (tmp_id: 20) → 各機能の基本設計 (tmp_id: 21, 22, 23...)
+                3. 詳細設計フェーズ (tmp_id: 40) → 各機能の詳細設計 (tmp_id: 41, 42, 43...)
+                4. 実装フェーズ (tmp_id: 60) → 各機能の実装 (tmp_id: 61, 62, 63...)
+                5. 結合テストフェーズ (tmp_id: 80) → 各機能の結合テスト (tmp_id: 81, 82, 83...)
+                6. システムテストフェーズ (tmp_id: 100) → 各機能のシステムテスト (tmp_id: 101, 102, 103...)
 
-                【フェーズ構造とtmp_id体系】
-                ■ 要件定義フェーズ (tmp_id: 1, tmp_parent_id: null)
-                  - 各機能の要件定義 (tmp_id: 11〜19, tmp_parent_id: 1)
-                
-                ■ 基本設計フェーズ (tmp_id: 20, tmp_parent_id: null)
-                  - 各機能の基本設計 (tmp_id: 21〜29, tmp_parent_id: 20)
-                
-                ■ 詳細設計フェーズ (tmp_id: 40, tmp_parent_id: null)
-                  - 各機能の詳細設計 (tmp_id: 41〜49, tmp_parent_id: 40)
-                
-                ■ 実装フェーズ (tmp_id: 60, tmp_parent_id: null)
-                  - 各機能の実装 (tmp_id: 61〜69, tmp_parent_id: 60)
-                
-                ■ 結合テストフェーズ (tmp_id: 80, tmp_parent_id: null)
-                  - 各機能の結合テスト (tmp_id: 81〜89, tmp_parent_id: 80)
-                
-                ■ システムテストフェーズ (tmp_id: 100, tmp_parent_id: null)
-                  - 各機能のシステムテスト (tmp_id: 101〜109, tmp_parent_id: 100)
+                【必須】以下のJSON配列のみを出力してください。説明文やコードブロックマーカーは不要です：
 
-                【期間設定ルール】
-                - 要件定義フェーズ: %s ～ %s
-                - 基本設計フェーズ: %s ～ %s
-                - 詳細設計フェーズ: %s ～ %s
-                - 実装フェーズ: %s ～ %s
-                - 結合テストフェーズ: %s ～ %s
-                - システムテストフェーズ: %s ～ %s
+                [{"tmp_id":1,"title":"要件定義フェーズ","assignee":"PM","tmp_parent_id":null,"plan_start":"%s","plan_end":"%s","actual_start":"","actual_end":"","status":"ToDo"},{"tmp_id":11,"title":"[機能1]の要件定義","assignee":"担当者A","tmp_parent_id":1,"plan_start":"%s","plan_end":"%s","actual_start":"","actual_end":"","status":"ToDo"},{"tmp_id":20,"title":"基本設計フェーズ","assignee":"PM","tmp_parent_id":null,"plan_start":"%s","plan_end":"%s","actual_start":"","actual_end":"","status":"ToDo"}]
 
-                【担当者割り当て】
-                - フェーズタスク: PM
-                - 個別機能タスク: 担当者A、担当者B、担当者C を順番に割り当て
-
-                【重要】以下のJSON配列形式のみを出力してください（前後の説明文は不要）：
-
-                [
-                  {
-                    "tmp_id": 1,
-                    "title": "要件定義フェーズ",
-                    "assignee": "PM",
-                    "tmp_parent_id": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 11,
-                    "title": "[機能名1]の要件定義",
-                    "assignee": "担当者A",
-                    "tmp_parent_id": 1,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 20,
-                    "title": "基本設計フェーズ",
-                    "assignee": "PM",
-                    "tmp_parent_id": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  }
-                ]
-
-                【制約事項】
-                - tmp_idは上記の体系に従って設定
-                - tmp_parent_idを必ず正しく設定（フェーズはnull、機能タスクは対応するフェーズのtmp_id）
-                - 日付はyyyy-MM-dd形式
-                - statusは"ToDo"固定
-                - 機能名は抽出した機能一覧から動的に使用
-                - JSONのみ出力（説明文なし）
-
-                【解析対象データ】
-                %s
+                上記の形式で、抽出した全機能について全フェーズのタスクを生成してください。
                 """,
                 String.join("\n", functionList),
-                startDate.format(DATE_FORMATTER),                          // 要件定義開始
-                startDate.plusWeeks(2).format(DATE_FORMATTER),             // 要件定義終了
-                startDate.plusWeeks(2).plusDays(1).format(DATE_FORMATTER), // 基本設計開始
-                startDate.plusWeeks(4).format(DATE_FORMATTER),             // 基本設計終了
-                startDate.plusWeeks(4).plusDays(1).format(DATE_FORMATTER), // 詳細設計開始
-                startDate.plusWeeks(6).format(DATE_FORMATTER),             // 詳細設計終了
-                startDate.plusWeeks(6).plusDays(1).format(DATE_FORMATTER), // 実装開始
-                startDate.plusWeeks(10).format(DATE_FORMATTER),            // 実装終了
-                startDate.plusWeeks(10).plusDays(1).format(DATE_FORMATTER),// 結合テスト開始
-                startDate.plusWeeks(12).format(DATE_FORMATTER),            // 結合テスト終了
-                startDate.plusWeeks(12).plusDays(1).format(DATE_FORMATTER),// システムテスト開始
-                startDate.plusWeeks(14).format(DATE_FORMATTER),            // システムテスト終了
-                startDate.format(DATE_FORMATTER),                          // 要件定義開始
-                startDate.plusWeeks(2).format(DATE_FORMATTER),             // 要件定義終了
-                startDate.format(DATE_FORMATTER),                          // 機能の要件定義開始
-                startDate.plusWeeks(2).format(DATE_FORMATTER),             // 機能の要件定義終了
-                startDate.plusWeeks(2).plusDays(1).format(DATE_FORMATTER), // 基本設計開始
-                startDate.plusWeeks(4).format(DATE_FORMATTER),             // 基本設計終了
-                excelDataJson);
+                startDate.format(DATE_FORMATTER),
+                startDate.plusWeeks(2).format(DATE_FORMATTER),
+                startDate.format(DATE_FORMATTER),
+                startDate.plusWeeks(2).format(DATE_FORMATTER),
+                startDate.plusWeeks(2).plusDays(1).format(DATE_FORMATTER),
+                startDate.plusWeeks(4).format(DATE_FORMATTER));
     }
 
     /**
@@ -595,7 +513,7 @@ public class ExcelAnalyzerService {
         generationConfig.addProperty("temperature", 0.1); // 一貫性重視
         generationConfig.addProperty("topK", 1); // 最も確率の高い選択
         generationConfig.addProperty("topP", 0.8); // 高品質な出力
-        generationConfig.addProperty("maxOutputTokens", 32768);
+        generationConfig.addProperty("maxOutputTokens", 32768); // 大幅に増加
         requestBody.add("generationConfig", generationConfig);
 
         return requestBody;
@@ -652,6 +570,12 @@ public class ExcelAnalyzerService {
      * テキストからJSON配列を抽出する改善されたメソッド
      */
     private String extractJsonFromText(String text) {
+        // まず、不完全なレスポンスかチェック
+        if (text.trim().equals("```json") || text.trim().equals("```") || text.trim().startsWith("```json\n[") && !text.trim().endsWith("]")) {
+            logger.error("AI応答が不完全です: {}", text.substring(0, Math.min(100, text.length())));
+            throw new RuntimeException("AI応答が不完全です。レスポンスが途中で切れています。");
+        }
+
         // 複数のパターンでJSON抽出を試行
         String[] patterns = {
                 "\\[.*?\\]", // 基本的な配列パターン
@@ -659,8 +583,7 @@ public class ExcelAnalyzerService {
                 "```\\s*\\[.*?\\]\\s*```" // 一般的なコードブロック
         };
 
-        for (int i = 0; i < patterns.length; i++) {
-            String pattern = patterns[i];
+        for (String pattern : patterns) {
             java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
             java.util.regex.Matcher m = p.matcher(text);
             if (m.find()) {
@@ -669,7 +592,10 @@ public class ExcelAnalyzerService {
                 found = found.replaceAll("```json|```", "").trim();
                 // 簡単な妥当性チェック
                 if (found.startsWith("[") && found.endsWith("]")) {
-                    return found;
+                    // 追加チェック: 基本的なJSON構造確認
+                    if (found.contains("tmp_id") && found.contains("title")) {
+                        return found;
+                    }
                 }
             }
         }
@@ -678,10 +604,16 @@ public class ExcelAnalyzerService {
         int startIdx = text.indexOf('[');
         int endIdx = text.lastIndexOf(']');
         if (startIdx >= 0 && endIdx > startIdx) {
-            return text.substring(startIdx, endIdx + 1);
+            String extracted = text.substring(startIdx, endIdx + 1);
+            // 基本的な妥当性チェック
+            if (extracted.contains("tmp_id") && extracted.contains("title")) {
+                return extracted;
+            }
         }
 
-        return null;
+        // どうしても見つからない場合
+        logger.error("JSON抽出失敗。AI応答内容: {}", text.substring(0, Math.min(200, text.length())));
+        throw new RuntimeException("AI応答からJSONを抽出できませんでした。レスポンスが不完全な可能性があります。");
     }
 
     /**
