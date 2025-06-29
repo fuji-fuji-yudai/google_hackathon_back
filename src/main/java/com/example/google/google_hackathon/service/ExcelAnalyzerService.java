@@ -57,8 +57,7 @@ public class ExcelAnalyzerService {
             return tasks;
         } catch (Exception e) {
             logger.error("Excel解析中にエラーが発生しました", e);
-            // エラー時はモックデータを返す
-            return parseTaskJson(generateMockTaskData());
+            throw new RuntimeException("Excel解析に失敗しました: " + e.getMessage(), e);
         }
     }
 
@@ -187,6 +186,32 @@ public class ExcelAnalyzerService {
         int lastRowNum = sheet.getLastRowNum();
         logger.info("シートの行範囲: {} ～ {}", firstRowNum, lastRowNum);
 
+        // 全行を強制スキャン（空行も含む）
+        logger.info("=== 全行スキャン開始 ===");
+        for (int rowIndex = 0; rowIndex <= Math.max(lastRowNum, 10); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row != null) {
+                int firstCellNum = row.getFirstCellNum();
+                int lastCellNum = row.getLastCellNum();
+                logger.info("行{}: セル範囲 {} ～ {}, 物理セル数: {}",
+                        rowIndex, firstCellNum, lastCellNum, row.getPhysicalNumberOfCells());
+
+                // 各セルの内容を詳細チェック
+                for (int cellIndex = 0; cellIndex < Math.max(lastCellNum, 10); cellIndex++) {
+                    Cell cell = row.getCell(cellIndex);
+                    if (cell != null) {
+                        String cellValue = getCellValueAsString(cell);
+                        logger.info("セル[{},{}]: 型={}, 値='{}'",
+                                rowIndex, cellIndex, cell.getCellType(), cellValue);
+                    } else {
+                        logger.debug("セル[{},{}]: null", rowIndex, cellIndex);
+                    }
+                }
+            } else {
+                logger.debug("行{}: null", rowIndex);
+            }
+        }
+
         // ヘッダー行の取得（通常は0行目）
         Row headerRow = sheet.getRow(0);
         List<String> headers = new ArrayList<>();
@@ -198,7 +223,7 @@ public class ExcelAnalyzerService {
             for (int i = 0; i < Math.max(headerRow.getLastCellNum(), 20); i++) {
                 Cell cell = headerRow.getCell(i);
                 String headerValue = getCellValueAsString(cell);
-                logger.debug("ヘッダー[{}]: '{}'", i, headerValue);
+                logger.info("ヘッダー[{}]: '{}'", i, headerValue);
                 headers.add(headerValue);
             }
         } else {
@@ -210,7 +235,7 @@ public class ExcelAnalyzerService {
         for (int rowNum = 1; rowNum <= lastRowNum; rowNum++) {
             Row row = sheet.getRow(rowNum);
             if (row != null) {
-                logger.debug("データ行{}を処理中...", rowNum);
+                logger.info("データ行{}を処理中...", rowNum);
 
                 Map<String, String> rowData = new HashMap<>();
                 boolean hasData = false;
@@ -223,7 +248,7 @@ public class ExcelAnalyzerService {
 
                     if (value != null && !value.trim().isEmpty()) {
                         hasData = true;
-                        logger.debug("データ発見 - 行{}列{}: ヘッダー='{}', 値='{}'", rowNum, i, header, value);
+                        logger.info("データ発見 - 行{}列{}: ヘッダー='{}', 値='{}'", rowNum, i, header, value);
                     }
 
                     if (header != null && !header.trim().isEmpty()) {
@@ -233,9 +258,9 @@ public class ExcelAnalyzerService {
 
                 if (hasData) {
                     rows.add(rowData);
-                    logger.debug("行{}をデータリストに追加: {}", rowNum, rowData);
+                    logger.info("行{}をデータリストに追加: {}", rowNum, rowData);
                 } else {
-                    logger.debug("行{}にはデータが見つかりませんでした", rowNum);
+                    logger.warn("行{}にはデータが見つかりませんでした", rowNum);
                 }
             }
         }
@@ -261,10 +286,12 @@ public class ExcelAnalyzerService {
             switch (cell.getCellType()) {
                 case STRING:
                     String stringValue = cell.getStringCellValue().trim();
+                    logger.trace("セル[{},{}] STRING: '{}'", cell.getRowIndex(), cell.getColumnIndex(), stringValue);
                     return stringValue;
                 case NUMERIC:
                     if (DateUtil.isCellDateFormatted(cell)) {
                         String dateValue = cell.getLocalDateTimeCellValue().format(DATE_FORMATTER);
+                        logger.trace("セル[{},{}] DATE: '{}'", cell.getRowIndex(), cell.getColumnIndex(), dateValue);
                         return dateValue;
                     }
                     double numValue = cell.getNumericCellValue();
@@ -274,16 +301,21 @@ public class ExcelAnalyzerService {
                     } else {
                         numString = String.valueOf(numValue);
                     }
+                    logger.trace("セル[{},{}] NUMERIC: '{}'", cell.getRowIndex(), cell.getColumnIndex(), numString);
                     return numString;
                 case BOOLEAN:
                     String boolValue = String.valueOf(cell.getBooleanCellValue());
+                    logger.trace("セル[{},{}] BOOLEAN: '{}'", cell.getRowIndex(), cell.getColumnIndex(), boolValue);
                     return boolValue;
                 case FORMULA:
                     String formulaValue = cell.getCellFormula();
+                    logger.trace("セル[{},{}] FORMULA: '{}'", cell.getRowIndex(), cell.getColumnIndex(), formulaValue);
                     return formulaValue;
                 case BLANK:
+                    logger.trace("セル[{},{}] BLANK", cell.getRowIndex(), cell.getColumnIndex());
                     return "";
                 default:
+                    logger.trace("セル[{},{}] OTHER: ''", cell.getRowIndex(), cell.getColumnIndex());
                     return "";
             }
         } catch (Exception e) {
@@ -303,8 +335,8 @@ public class ExcelAnalyzerService {
             credentials.refreshIfExpired();
             String accessToken = credentials.getAccessToken().getTokenValue();
 
-            // プロンプト構築（tmp_id対応版）
-            String prompt = buildAdvancedWBSPrompt(excelData);
+            // プロンプト構築（修正版）
+            String prompt = buildPhaseBasedWBSPrompt(excelData);
 
             // リクエストボディ構築
             JsonObject requestBody = createVertexAIRequest(prompt);
@@ -338,9 +370,9 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * 高度なWBS生成プロンプトを構築（tmp_id対応版）
+     * フェーズ別WBS生成プロンプトを構築（修正版）
      */
-    private String buildAdvancedWBSPrompt(Map<String, Object> excelData) {
+    private String buildPhaseBasedWBSPrompt(Map<String, Object> excelData) {
         Gson gson = new Gson();
         String excelDataJson = gson.toJson(excelData);
         LocalDate startDate = LocalDate.now();
@@ -351,56 +383,51 @@ public class ExcelAnalyzerService {
             throw new RuntimeException("Excelファイルにデータが含まれていません。機能一覧、難易度、種別などのデータを含むExcelファイルをアップロードしてください。");
         }
 
-        // Excelデータの特性を事前分析
-        String functionalAnalysis = analyzeFunctionalCharacteristics(excelData);
+        // Excelから機能一覧を抽出
+        List<String> functionList = extractFunctionList(excelData);
+        logger.info("抽出された機能一覧: {}", functionList);
 
         return String.format("""
                 あなたはプロジェクト管理とソフトウェア開発のエキスパートです。
-                提供されたExcelファイルの機能一覧を分析し、各機能の特性に基づいた最適なWBS（階層構造付き）を生成してください。
+                提供されたExcelファイルから抽出した機能一覧を基に、各開発フェーズごとの階層構造を持つWBSを生成してください。
 
-                【分析されたExcelの特性】
+                【抽出された機能一覧】
                 %s
 
-                【WBS生成の戦略的原則】
-                1. **明確な階層構造**: 各フェーズを親タスクとし、個別機能のタスクを子タスクとする
-                2. **機能の依存関係分析**: 機能間の論理的依存関係を特定
-                3. **リスク評価**: 難易度と複雑さからリスクレベルを評価
-                4. **リソース最適化**: 担当者のスキルと負荷を考慮した配置
+                【生成する階層構造】
+                1. 各開発フェーズを親タスクとして作成
+                2. 各フェーズの下に、全ての機能に対応する子タスクを作成
 
-                【必須の階層構造ルール】
-                以下のフェーズ構造に沿って親子関係を明確に設定してください：
+                【フェーズ構造とtmp_id体系】
+                ■ 要件定義フェーズ (tmp_id: 1, tmp_parent_id: null)
+                  - 各機能の要件定義 (tmp_id: 11〜19, tmp_parent_id: 1)
+                
+                ■ 基本設計フェーズ (tmp_id: 20, tmp_parent_id: null)
+                  - 各機能の基本設計 (tmp_id: 21〜29, tmp_parent_id: 20)
+                
+                ■ 詳細設計フェーズ (tmp_id: 40, tmp_parent_id: null)
+                  - 各機能の詳細設計 (tmp_id: 41〜49, tmp_parent_id: 40)
+                
+                ■ 実装フェーズ (tmp_id: 60, tmp_parent_id: null)
+                  - 各機能の実装 (tmp_id: 61〜69, tmp_parent_id: 60)
+                
+                ■ 結合テストフェーズ (tmp_id: 80, tmp_parent_id: null)
+                  - 各機能の結合テスト (tmp_id: 81〜89, tmp_parent_id: 80)
+                
+                ■ システムテストフェーズ (tmp_id: 100, tmp_parent_id: null)
+                  - 各機能のシステムテスト (tmp_id: 101〜109, tmp_parent_id: 100)
 
-                **親タスク（フェーズ）**:
-                - tmp_id 1: 要件定義フェーズ（tmp_parent_id: null）
-                - tmp_id 12: 基本設計フェーズ（tmp_parent_id: null）  
-                - tmp_id 23: 詳細設計フェーズ（tmp_parent_id: null）
-                - tmp_id 34: 実装フェーズ（tmp_parent_id: null）
-                - tmp_id 45: 結合テストフェーズ（tmp_parent_id: null）
-                - tmp_id 51: システムテストフェーズ（tmp_parent_id: null）
-                - tmp_id 54: リリース準備フェーズ（tmp_parent_id: null）
+                【期間設定ルール】
+                - 要件定義フェーズ: %s ～ %s
+                - 基本設計フェーズ: %s ～ %s
+                - 詳細設計フェーズ: %s ～ %s
+                - 実装フェーズ: %s ～ %s
+                - 結合テストフェーズ: %s ～ %s
+                - システムテストフェーズ: %s ～ %s
 
-                **子タスク（個別機能）**:
-                - 要件定義関連タスク → tmp_parent_id: 1 を設定
-                - 基本設計関連タスク → tmp_parent_id: 12 を設定
-                - 詳細設計関連タスク → tmp_parent_id: 23 を設定
-                - 実装関連タスク → tmp_parent_id: 34 を設定
-                - 結合テスト関連タスク → tmp_parent_id: 45 を設定
-                - システムテスト関連タスク → tmp_parent_id: 51 を設定
-                - リリース準備関連タスク → tmp_parent_id: 54 を設定
-
-                【動的期間設定ルール】
-                - 難易度「小」: 1-3日間
-                - 難易度「中」: 3-7日間
-                - 難易度「大」: 7-14日間
-                - 画面系機能: UI設計に+1-2日
-                - データ処理系: データ設計に+2-3日
-                - フェーズ間バッファ: 各フェーズ終了後1-2日の調整期間
-
-                【担当者割り当て戦略】
-                - 複雑な機能（難易度「大」）→ 経験豊富な担当者
-                - 関連性の高い機能 → 同一担当者にグルーピング
-                - 並行実装可能な機能 → 異なる担当者に分散
-                - 担当者: PM、担当者A、担当者B、担当者C、テスト担当
+                【担当者割り当て】
+                - フェーズタスク: PM
+                - 個別機能タスク: 担当者A、担当者B、担当者C を順番に割り当て
 
                 【重要】以下のJSON配列形式のみを出力してください（前後の説明文は不要）：
 
@@ -417,8 +444,8 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   },
                   {
-                    "tmp_id": 2,
-                    "title": "[機能名]の要件定義",
+                    "tmp_id": 11,
+                    "title": "[機能名1]の要件定義",
                     "assignee": "担当者A",
                     "tmp_parent_id": 1,
                     "plan_start": "%s",
@@ -428,21 +455,10 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   },
                   {
-                    "tmp_id": 12,
+                    "tmp_id": 20,
                     "title": "基本設計フェーズ",
-                    "assignee": "PM", 
+                    "assignee": "PM",
                     "tmp_parent_id": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 13,
-                    "title": "[機能名]の基本設計",
-                    "assignee": "担当者A",
-                    "tmp_parent_id": 12,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -451,29 +467,78 @@ public class ExcelAnalyzerService {
                   }
                 ]
 
-                【重要な制約】
-                - tmp_idは1から連番で設定
-                - **tmp_parent_idを必ず正しく設定する**（フェーズタスクはnull、個別機能タスクは対応するフェーズのtmp_idを指定）
-                - 日付はyyyy-MM-dd形式（%s から開始）
+                【制約事項】
+                - tmp_idは上記の体系に従って設定
+                - tmp_parent_idを必ず正しく設定（フェーズはnull、機能タスクは対応するフェーズのtmp_id）
+                - 日付はyyyy-MM-dd形式
                 - statusは"ToDo"固定
-                - 機能名は元データから動的に取得して使用
+                - 機能名は抽出した機能一覧から動的に使用
                 - JSONのみ出力（説明文なし）
-                - id、parent_idフィールドは出力しないでください（tmp_id、tmp_parent_idのみ使用）
 
                 【解析対象データ】
                 %s
                 """,
-                functionalAnalysis,
-                startDate.format(DATE_FORMATTER),
-                startDate.plusWeeks(1).format(DATE_FORMATTER),
-                startDate.format(DATE_FORMATTER),
-                startDate.plusDays(3).format(DATE_FORMATTER),
-                startDate.plusWeeks(1).format(DATE_FORMATTER),
-                startDate.plusWeeks(2).format(DATE_FORMATTER),
-                startDate.plusWeeks(1).plusDays(1).format(DATE_FORMATTER),
-                startDate.plusWeeks(1).plusDays(3).format(DATE_FORMATTER),
-                startDate.format(DATE_FORMATTER),
+                String.join("\n", functionList),
+                startDate.format(DATE_FORMATTER),                          // 要件定義開始
+                startDate.plusWeeks(2).format(DATE_FORMATTER),             // 要件定義終了
+                startDate.plusWeeks(2).plusDays(1).format(DATE_FORMATTER), // 基本設計開始
+                startDate.plusWeeks(4).format(DATE_FORMATTER),             // 基本設計終了
+                startDate.plusWeeks(4).plusDays(1).format(DATE_FORMATTER), // 詳細設計開始
+                startDate.plusWeeks(6).format(DATE_FORMATTER),             // 詳細設計終了
+                startDate.plusWeeks(6).plusDays(1).format(DATE_FORMATTER), // 実装開始
+                startDate.plusWeeks(10).format(DATE_FORMATTER),            // 実装終了
+                startDate.plusWeeks(10).plusDays(1).format(DATE_FORMATTER),// 結合テスト開始
+                startDate.plusWeeks(12).format(DATE_FORMATTER),            // 結合テスト終了
+                startDate.plusWeeks(12).plusDays(1).format(DATE_FORMATTER),// システムテスト開始
+                startDate.plusWeeks(14).format(DATE_FORMATTER),            // システムテスト終了
+                startDate.format(DATE_FORMATTER),                          // 要件定義開始
+                startDate.plusWeeks(2).format(DATE_FORMATTER),             // 要件定義終了
+                startDate.format(DATE_FORMATTER),                          // 機能の要件定義開始
+                startDate.plusWeeks(2).format(DATE_FORMATTER),             // 機能の要件定義終了
+                startDate.plusWeeks(2).plusDays(1).format(DATE_FORMATTER), // 基本設計開始
+                startDate.plusWeeks(4).format(DATE_FORMATTER),             // 基本設計終了
                 excelDataJson);
+    }
+
+    /**
+     * Excelデータから機能一覧を抽出
+     */
+    private List<String> extractFunctionList(Map<String, Object> excelData) {
+        List<String> functionList = new ArrayList<>();
+        
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> sheets = (List<Map<String, Object>>) excelData.get("sheets");
+
+            if (sheets != null && !sheets.isEmpty()) {
+                Map<String, Object> sheet = sheets.get(0);
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> rows = (List<Map<String, String>>) sheet.get("rows");
+
+                if (rows != null && !rows.isEmpty()) {
+                    for (Map<String, String> row : rows) {
+                        // 機能名を抽出（機能名、機能ID、などのキーから）
+                        String functionName = null;
+                        
+                        // 様々なキー名パターンに対応
+                        for (String key : Arrays.asList("機能名", "機能", "function", "Function", "FUNCTION")) {
+                            if (row.containsKey(key) && row.get(key) != null && !row.get(key).trim().isEmpty()) {
+                                functionName = row.get(key).trim();
+                                break;
+                            }
+                        }
+                        
+                        if (functionName != null) {
+                            functionList.add(functionName);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("機能一覧の抽出中にエラー: {}", e.getMessage());
+        }
+        
+        return functionList;
     }
 
     /**
@@ -505,84 +570,6 @@ public class ExcelAnalyzerService {
             logger.error("Excelデータの妥当性チェック中にエラー: {}", e.getMessage());
             return false;
         }
-    }
-
-    /**
-     * Excelデータから機能特性を分析
-     */
-    private String analyzeFunctionalCharacteristics(Map<String, Object> excelData) {
-        StringBuilder analysis = new StringBuilder();
-
-        try {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> sheets = (List<Map<String, Object>>) excelData.get("sheets");
-
-            if (sheets != null && !sheets.isEmpty()) {
-                Map<String, Object> sheet = sheets.get(0);
-                @SuppressWarnings("unchecked")
-                List<Map<String, String>> rows = (List<Map<String, String>>) sheet.get("rows");
-
-                if (rows != null && !rows.isEmpty()) {
-                    analysis.append("機能数: ").append(rows.size()).append("個\n");
-
-                    // 難易度分析
-                    Map<String, Long> difficultyCount = rows.stream()
-                            .filter(row -> row.containsKey("難易度"))
-                            .collect(Collectors.groupingBy(
-                                    row -> row.getOrDefault("難易度", "不明"),
-                                    Collectors.counting()));
-
-                    if (!difficultyCount.isEmpty()) {
-                        analysis.append("難易度分布: ");
-                        difficultyCount
-                                .forEach((key, value) -> analysis.append(key).append("(").append(value).append("個) "));
-                        analysis.append("\n");
-                    }
-
-                    // 機能タイプ分析
-                    long screenCount = rows.stream()
-                            .mapToLong(row -> {
-                                String name = row.values().stream()
-                                        .filter(Objects::nonNull)
-                                        .collect(Collectors.joining(" "));
-                                return (name.contains("画面") || name.contains("UI") || name.contains("表示")
-                                        || name.contains("画") || name.contains("入力")) ? 1 : 0;
-                            })
-                            .sum();
-
-                    long processCount = rows.stream()
-                            .mapToLong(row -> {
-                                String name = row.values().stream()
-                                        .filter(Objects::nonNull)
-                                        .collect(Collectors.joining(" "));
-                                return (name.contains("処理") || name.contains("計算") || name.contains("登録")
-                                        || name.contains("更新") || name.contains("削除")) ? 1 : 0;
-                            })
-                            .sum();
-
-                    analysis.append("画面系機能: ").append(screenCount).append("個\n");
-                    analysis.append("処理系機能: ").append(processCount).append("個\n");
-                    analysis.append("その他機能: ").append(rows.size() - screenCount - processCount).append("個\n");
-
-                    // プロジェクト複雑度の推定
-                    double complexityScore = rows.size() * 0.3;
-                    if (difficultyCount.getOrDefault("大", 0L) > 0) {
-                        complexityScore += difficultyCount.get("大") * 2.0;
-                    }
-                    if (difficultyCount.getOrDefault("中", 0L) > 0) {
-                        complexityScore += difficultyCount.get("中") * 1.0;
-                    }
-
-                    String complexityLevel = complexityScore > 10 ? "高" : complexityScore > 5 ? "中" : "低";
-                    analysis.append("プロジェクト複雑度: ").append(complexityLevel).append("\n");
-                }
-            }
-        } catch (Exception e) {
-            logger.warn("機能特性の分析中に軽微なエラーが発生しました: {}", e.getMessage());
-            analysis.append("基本的な機能一覧として分析します\n");
-        }
-
-        return analysis.toString();
     }
 
     /**
@@ -620,7 +607,7 @@ public class ExcelAnalyzerService {
     private String extractTaskJsonFromResponse(String responseBody) throws Exception {
         try {
             logger.info("=== Vertex AI API レスポンス分析開始 ===");
-            logger.debug("レスポンス全体（最初の500文字）: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
+            logger.info("レスポンス全体（最初の500文字）: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
 
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonArray candidates = json.getAsJsonArray("candidates");
@@ -630,12 +617,12 @@ public class ExcelAnalyzerService {
                 JsonArray partsArray = content.getAsJsonArray("parts");
                 String text = partsArray.get(0).getAsJsonObject().get("text").getAsString();
 
-                logger.debug("抽出されたテキスト全体: {}", text);
+                logger.info("抽出されたテキスト全体: {}", text);
 
                 // JSON部分のみを抽出（より堅牢な抽出ロジック）
                 String jsonText = extractJsonFromText(text);
                 if (jsonText != null) {
-                    logger.debug("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
+                    logger.info("抽出されたJSON: {}", jsonText.substring(0, Math.min(500, jsonText.length())) + "...");
 
                     // JSONの妥当性をチェック
                     try {
@@ -665,9 +652,6 @@ public class ExcelAnalyzerService {
      * テキストからJSON配列を抽出する改善されたメソッド
      */
     private String extractJsonFromText(String text) {
-        logger.debug("=== JSON抽出開始 ===");
-        logger.debug("抽出対象テキスト: {}", text);
-
         // 複数のパターンでJSON抽出を試行
         String[] patterns = {
                 "\\[.*?\\]", // 基本的な配列パターン
@@ -677,151 +661,48 @@ public class ExcelAnalyzerService {
 
         for (int i = 0; i < patterns.length; i++) {
             String pattern = patterns[i];
-            logger.debug("パターン{}を試行: {}", i + 1, pattern);
-
             java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
             java.util.regex.Matcher m = p.matcher(text);
             if (m.find()) {
                 String found = m.group();
-                logger.debug("パターン{}でマッチしました: {}", i + 1, found.substring(0, Math.min(100, found.length())) + "...");
-
                 // マークダウンマーカーを除去
                 found = found.replaceAll("```json|```", "").trim();
-
                 // 簡単な妥当性チェック
                 if (found.startsWith("[") && found.endsWith("]")) {
-                    logger.debug("JSON形式チェック: OK");
                     return found;
-                } else {
-                    logger.warn("JSON形式チェック: NG - '[' または ']' が見つからない");
                 }
-            } else {
-                logger.debug("パターン{}はマッチしませんでした", i + 1);
             }
         }
 
         // フォールバック: 手動で最初の [から最後の ] まで抽出
-        logger.debug("フォールバック抽出を試行");
         int startIdx = text.indexOf('[');
         int endIdx = text.lastIndexOf(']');
         if (startIdx >= 0 && endIdx > startIdx) {
-            String extracted = text.substring(startIdx, endIdx + 1);
-            logger.debug("フォールバック抽出成功: {}", extracted.substring(0, Math.min(100, extracted.length())) + "...");
-            return extracted;
+            return text.substring(startIdx, endIdx + 1);
         }
 
-        logger.error("全てのJSON抽出方法が失敗しました");
         return null;
     }
 
     /**
-     * モックデータ生成（tmp_id対応版）
-     */
-    private String generateMockTaskData() {
-        LocalDate now = LocalDate.now();
-        return String.format("""
-                [
-                  {
-                    "tmp_id": 1,
-                    "title": "要件定義フェーズ",
-                    "assignee": "PM",
-                    "tmp_parent_id": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 2,
-                    "title": "機能Aの要件定義",
-                    "assignee": "担当者A",
-                    "tmp_parent_id": 1,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 3,
-                    "title": "機能Bの要件定義",
-                    "assignee": "担当者B",
-                    "tmp_parent_id": 1,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 12,
-                    "title": "基本設計フェーズ",
-                    "assignee": "PM",
-                    "tmp_parent_id": null,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 13,
-                    "title": "機能Aの基本設計",
-                    "assignee": "担当者A",
-                    "tmp_parent_id": 12,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  },
-                  {
-                    "tmp_id": 14,
-                    "title": "機能Bの基本設計",
-                    "assignee": "担当者B",
-                    "tmp_parent_id": 12,
-                    "plan_start": "%s",
-                    "plan_end": "%s",
-                    "actual_start": "",
-                    "actual_end": "",
-                    "status": "ToDo"
-                  }
-                ]""",
-                now.format(DATE_FORMATTER),
-                now.plusWeeks(1).format(DATE_FORMATTER),
-                now.format(DATE_FORMATTER),
-                now.plusDays(2).format(DATE_FORMATTER),
-                now.plusDays(2).format(DATE_FORMATTER),
-                now.plusDays(4).format(DATE_FORMATTER),
-                now.plusWeeks(1).format(DATE_FORMATTER),
-                now.plusWeeks(2).format(DATE_FORMATTER),
-                now.plusWeeks(1).format(DATE_FORMATTER),
-                now.plusWeeks(1).plusDays(3).format(DATE_FORMATTER),
-                now.plusWeeks(1).plusDays(3).format(DATE_FORMATTER),
-                now.plusWeeks(2).format(DATE_FORMATTER));
-    }
-
-    /**
-     * JSON文字列をTaskDtoのリストに変換（tmp_id強制設定版）
+     * フェーズ別WBS生成プロンプトを構築（修正版）
      */
     private List<TaskDto> parseTaskJson(String json) {
         try {
             logger.info("=== JSON解析開始 ===");
-            logger.debug("解析対象JSON: {}", json);
+            logger.info("解析対象JSON: {}", json);
 
             // 空文字列やnullのチェック
             if (json == null || json.trim().isEmpty()) {
-                logger.warn("JSONが空です。モックデータを返します。");
-                return parseTaskJson(generateMockTaskData());
+                logger.error("JSONが空です");
+                throw new RuntimeException("AI応答からタスクデータを取得できませんでした");
             }
 
             // JSON配列の形式かチェック
             String trimmedJson = json.trim();
             if (!trimmedJson.startsWith("[") || !trimmedJson.endsWith("]")) {
-                logger.warn("JSONが配列形式ではありません。内容: {}", trimmedJson);
-                logger.warn("Vertex AIがJSON以外の応答を返しました。モックデータを返します。");
-                return parseTaskJson(generateMockTaskData());
+                logger.error("JSONが配列形式ではありません。内容: {}", trimmedJson);
+                throw new RuntimeException("AI応答が期待された形式ではありません: " + trimmedJson);
             }
 
             Gson gson = new Gson();
@@ -829,89 +710,17 @@ public class ExcelAnalyzerService {
 
             if (taskArray == null) {
                 logger.error("Gsonがnullを返しました");
-                return parseTaskJson(generateMockTaskData());
+                throw new RuntimeException("タスクデータの解析に失敗しました");
             }
 
             logger.info("Gsonで解析されたタスク数: {}", taskArray.length);
 
             List<TaskDto> tasks = new ArrayList<>();
-            int autoTmpId = 1; // 自動採番用のカウンター
-            
-            // フェーズマッピング（タイトルからフェーズを判定）
-            Map<String, Integer> phaseMapping = Map.of(
-                "要件定義", 1,
-                "基本設計", 12,
-                "詳細設計", 23,
-                "実装", 34,
-                "結合テスト", 45,
-                "システムテスト", 51,
-                "リリース準備", 54
-            );
 
             for (int i = 0; i < taskArray.length; i++) {
                 TaskDto task = taskArray[i];
-                logger.debug("処理中タスク{}: {} (元tmp_id: {}, tmp_parent_id: {})", 
+                logger.debug("タスク{}: {} (tmp_id: {}, tmp_parent_id: {})", 
                     i + 1, task.title, task.tmp_id, task.tmp_parent_id);
-
-                // tmp_idが設定されていない場合は自動設定
-                if (task.tmp_id == null || task.tmp_id == 0) {
-                    // フェーズタスクかどうかを判定
-                    boolean isPhaseTask = task.title.contains("フェーズ");
-                    
-                    if (isPhaseTask) {
-                        // フェーズタスクの場合、フェーズ名から適切なtmp_idを設定
-                        for (Map.Entry<String, Integer> entry : phaseMapping.entrySet()) {
-                            if (task.title.contains(entry.getKey())) {
-                                task.tmp_id = entry.getValue();
-                                task.tmp_parent_id = null; // フェーズタスクは親なし
-                                break;
-                            }
-                        }
-                        
-                        // マッピングが見つからない場合は自動採番
-                        if (task.tmp_id == null) {
-                            task.tmp_id = autoTmpId++;
-                            task.tmp_parent_id = null;
-                        }
-                    } else {
-                        // 個別機能タスクの場合
-                        task.tmp_id = autoTmpId++;
-                        
-                        // 親フェーズを特定
-                        if (task.tmp_parent_id == null) {
-                            // タスク名からフェーズを推定
-                            for (Map.Entry<String, Integer> entry : phaseMapping.entrySet()) {
-                                if (task.title.contains(entry.getKey())) {
-                                    task.tmp_parent_id = entry.getValue();
-                                    break;
-                                }
-                            }
-                            
-                            // フェーズが特定できない場合、直前のフェーズタスクを親とする
-                            if (task.tmp_parent_id == null && i > 0) {
-                                // 直前のタスクから親を探す
-                                for (int j = i - 1; j >= 0; j--) {
-                                    TaskDto prevTask = taskArray[j];
-                                    if (prevTask.title.contains("フェーズ") && prevTask.tmp_id != null) {
-                                        task.tmp_parent_id = prevTask.tmp_id;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // tmp_idが設定されている場合、tmp_parent_idを確認
-                    if (task.tmp_parent_id == null && !task.title.contains("フェーズ")) {
-                        // 個別機能タスクなのに親が設定されていない場合
-                        for (Map.Entry<String, Integer> entry : phaseMapping.entrySet()) {
-                            if (task.title.contains(entry.getKey())) {
-                                task.tmp_parent_id = entry.getValue();
-                                break;
-                            }
-                        }
-                    }
-                }
 
                 // 必須フィールドの初期化
                 if (task.status == null || task.status.isEmpty()) {
@@ -927,67 +736,16 @@ public class ExcelAnalyzerService {
                     task.actual_end = "";
                 }
 
-                logger.debug("修正後タスク{}: {} (tmp_id: {}, tmp_parent_id: {})", 
-                    i + 1, task.title, task.tmp_id, task.tmp_parent_id);
-
                 tasks.add(task);
             }
 
             logger.info("最終的に作成されたタスク数: {}", tasks.size());
-            
-            // 階層構造の妥当性をチェック
-            validateTaskHierarchy(tasks);
-            
             return tasks;
         } catch (Exception e) {
             logger.error("JSONの解析に失敗しました: {}", e.getMessage());
             logger.error("問題のあるJSON: {}", json);
-            logger.warn("解析に失敗したため、モックデータを返します");
-
-            // 解析に失敗した場合はモックデータを返す
-            try {
-                return parseTaskJson(generateMockTaskData());
-            } catch (Exception mockError) {
-                logger.error("モックデータの生成にも失敗しました: {}", mockError.getMessage());
-                return Collections.emptyList();
-            }
+            throw new RuntimeException("タスクデータの解析に失敗しました: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * タスク階層構造の妥当性をチェック
-     */
-    private void validateTaskHierarchy(List<TaskDto> tasks) {
-        Set<Integer> allTmpIds = tasks.stream()
-                .map(task -> task.tmp_id)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        
-        Set<Integer> parentIds = tasks.stream()
-                .map(task -> task.tmp_parent_id)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        
-        // 存在しない親を参照している子タスクを検出
-        Set<Integer> invalidParents = parentIds.stream()
-                .filter(parentId -> !allTmpIds.contains(parentId))
-                .collect(Collectors.toSet());
-        
-        if (!invalidParents.isEmpty()) {
-            logger.warn("存在しない親を参照している子タスクがあります: {}", invalidParents);
-            
-            // 無効な親参照を修正
-            tasks.forEach(task -> {
-                if (task.tmp_parent_id != null && invalidParents.contains(task.tmp_parent_id)) {
-                    logger.warn("タスク '{}' の親参照を修正: {} -> null", task.title, task.tmp_parent_id);
-                    task.tmp_parent_id = null; // 親なしタスクとして扱う
-                }
-            });
-        }
-        
-        logger.info("階層構造チェック完了 - フェーズタスク: {}個, 子タスク: {}個", 
-            tasks.stream().filter(t -> t.tmp_parent_id == null).count(),
-            tasks.stream().filter(t -> t.tmp_parent_id != null).count());
     }
 
     /**
