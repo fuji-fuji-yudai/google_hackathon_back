@@ -10,4 +10,7 @@ public class TaskDto {
     public String actual_end;   // 文字列型で日付を保持
     public String status;
     public Integer parent_id;
+        // 追加: AI生成時の一時ID用フィールド
+    public Integer tmp_id;
+    public Integer tmp_parent_id;
 }

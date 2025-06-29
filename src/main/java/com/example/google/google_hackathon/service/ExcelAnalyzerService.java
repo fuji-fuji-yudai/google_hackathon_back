@@ -63,84 +63,72 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * ExcelからのタスクをDBに保存する（改良版）
+     * ExcelからのタスクをDBに保存する（tmp_id方式）
      */
     public List<TaskDto> saveExcelTasks(List<TaskDto> taskDtos) {
-        logger.info("=== Excelタスクの保存開始 ===");
+        logger.info("=== tmp_id方式でExcelタスク保存開始 ===");
         logger.info("保存対象タスク数: {}", taskDtos.size());
 
         try {
-            // まず親タスク（parent_id が null のもの）を保存
-            List<TaskDto> parentTasks = taskDtos.stream()
-                    .filter(dto -> dto.parent_id == null)
-                    .collect(Collectors.toList());
-
-            logger.info("親タスク数: {}", parentTasks.size());
-
-            List<Task> savedParents = new ArrayList<>();
-            Map<Integer, Integer> oldToNewIdMap = new HashMap<>(); // 旧ID → 新IDのマッピング
-
-            // 親タスクを保存
-            for (TaskDto parentDto : parentTasks) {
-                Task parentEntity = convertToEntity(parentDto);
-                parentEntity.setId(null); // 新規作成のためIDをnullに設定
-
-                Task savedParent = taskManageRepository.save(parentEntity);
-                savedParents.add(savedParent);
-
-                // 旧IDと新IDのマッピングを記録
-                if (parentDto.id != null) {
-                    oldToNewIdMap.put(parentDto.id, savedParent.getId());
+            // Step 1: tmp_id -> 実際のIDのマッピングを構築するため、全タスクを保存
+            Map<Integer, Integer> tmpIdToRealIdMap = new HashMap<>();
+            List<Task> savedTasks = new ArrayList<>();
+            
+            for (TaskDto dto : taskDtos) {
+                Task entity = convertToEntity(dto);
+                entity.setId(null); // 自動採番させる
+                entity.setParentId(null); // 後で設定
+                entity.setTmpId(dto.tmp_id); // AI生成の論理IDを保持
+                
+                Task saved = taskManageRepository.save(entity);
+                savedTasks.add(saved);
+                
+                // マッピングを記録
+                if (dto.tmp_id != null) {
+                    tmpIdToRealIdMap.put(dto.tmp_id, saved.getId());
+                    logger.info("IDマッピング: tmp_id:{} -> real_id:{} ({})", 
+                        dto.tmp_id, saved.getId(), dto.title);
                 }
-
-                logger.info("親タスク保存: {} -> 新ID: {}", parentDto.title, savedParent.getId());
             }
-
-            // 次に子タスクを保存
-            List<TaskDto> childTasks = taskDtos.stream()
-                    .filter(dto -> dto.parent_id != null)
-                    .collect(Collectors.toList());
-
-            logger.info("子タスク数: {}", childTasks.size());
-
-            List<Task> savedChildren = new ArrayList<>();
-
-            for (TaskDto childDto : childTasks) {
-                Task childEntity = convertToEntity(childDto);
-                childEntity.setId(null); // 新規作成のためIDをnullに設定
-
-                // 親IDを新しいIDに変換
-                Integer newParentId = oldToNewIdMap.get(childDto.parent_id);
-                if (newParentId != null) {
-                    childEntity.setParentId(newParentId);
-                    logger.info("子タスク: {} -> 親ID: {} -> 新親ID: {}",
-                            childDto.title, childDto.parent_id, newParentId);
-                } else {
-                    logger.warn("親タスクが見つかりません。親IDをnullに設定: {}", childDto.title);
-                    childEntity.setParentId(null);
+            
+            // Step 2: tmp_parent_idを使って実際の親子関係を設定
+            List<Task> tasksToUpdate = new ArrayList<>();
+            
+            for (int i = 0; i < taskDtos.size(); i++) {
+                TaskDto dto = taskDtos.get(i);
+                Task saved = savedTasks.get(i);
+                
+                if (dto.tmp_parent_id != null) {
+                    Integer realParentId = tmpIdToRealIdMap.get(dto.tmp_parent_id);
+                    if (realParentId != null) {
+                        saved.setParentId(realParentId);
+                        tasksToUpdate.add(saved);
+                        
+                        logger.info("親子関係設定: {} -> 親tmp_id:{} -> 親real_id:{}", 
+                            dto.title, dto.tmp_parent_id, realParentId);
+                    } else {
+                        logger.warn("親タスクが見つからない: {} -> tmp_parent_id:{}", 
+                            dto.title, dto.tmp_parent_id);
+                    }
                 }
-
-                Task savedChild = taskManageRepository.save(childEntity);
-                savedChildren.add(savedChild);
-
-                logger.info("子タスク保存: {} -> 新ID: {}", childDto.title, savedChild.getId());
             }
-
-            // 保存されたタスクをすべて結合
-            List<Task> allSavedTasks = new ArrayList<>();
-            allSavedTasks.addAll(savedParents);
-            allSavedTasks.addAll(savedChildren);
-
-            logger.info("=== 保存完了 ===");
-            logger.info("総保存タスク数: {}", allSavedTasks.size());
-
-            // DTOに変換して返す
-            return allSavedTasks.stream()
+            
+            // Step 3: 親子関係を設定したタスクを一括更新
+            if (!tasksToUpdate.isEmpty()) {
+                taskManageRepository.saveAll(tasksToUpdate);
+                logger.info("親子関係更新完了: {}件", tasksToUpdate.size());
+            }
+            
+            // Step 4: 最終結果を返す
+            List<TaskDto> result = taskManageRepository.findAll().stream()
                     .map(this::convertToDto)
                     .collect(Collectors.toList());
-
+                    
+            logger.info("=== 保存完了: 総タスク数:{} ===", result.size());
+            return result;
+            
         } catch (Exception e) {
-            logger.error("Excelタスクの保存中にエラーが発生しました", e);
+            logger.error("tmp_id方式でのタスク保存中にエラー", e);
             throw new RuntimeException("タスクの保存に失敗しました: " + e.getMessage(), e);
         }
     }
@@ -348,7 +336,7 @@ public class ExcelAnalyzerService {
             credentials.refreshIfExpired();
             String accessToken = credentials.getAccessToken().getTokenValue();
 
-            // プロンプト構築（改善された汎用的プロンプト）
+            // プロンプト構築（tmp_id対応版）
             String prompt = buildAdvancedWBSPrompt(excelData);
 
             // リクエストボディ構築
@@ -383,7 +371,7 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * 高度なWBS生成プロンプトを構築（汎用的・柔軟性重視）
+     * 高度なWBS生成プロンプトを構築（tmp_id対応版）
      */
     private String buildAdvancedWBSPrompt(Map<String, Object> excelData) {
         Gson gson = new Gson();
@@ -401,26 +389,37 @@ public class ExcelAnalyzerService {
 
         return String.format("""
                 あなたはプロジェクト管理とソフトウェア開発のエキスパートです。
-                提供されたExcelファイルの機能一覧を分析し、各機能の特性に基づいた最適なWBSを生成してください。
+                提供されたExcelファイルの機能一覧を分析し、各機能の特性に基づいた最適なWBS（階層構造付き）を生成してください。
 
                 【分析されたExcelの特性】
                 %s
 
                 【WBS生成の戦略的原則】
-                1. **機能の依存関係分析**: 機能間の論理的依存関係を特定
-                2. **リスク評価**: 難易度と複雑さからリスクレベルを評価
-                3. **リソース最適化**: 担当者のスキルと負荷を考慮した配置
-                4. **品質保証**: 各フェーズでの品質チェックポイント設定
+                1. **明確な階層構造**: 各フェーズを親タスクとし、個別機能のタスクを子タスクとする
+                2. **機能の依存関係分析**: 機能間の論理的依存関係を特定
+                3. **リスク評価**: 難易度と複雑さからリスクレベルを評価
+                4. **リソース最適化**: 担当者のスキルと負荷を考慮した配置
 
-                【標準開発フェーズの適用】
-                以下のフェーズ構造に沿ってタスクを生成してください：
-                - 要件定義フェーズ（各機能の要件を明確化）
-                - 基本設計フェーズ（システム全体のアーキテクチャ設計）
-                - 詳細設計フェーズ（個別機能の詳細仕様）
-                - 実装フェーズ（コーディングと単体テスト）
-                - 結合テストフェーズ（機能間の連携テスト）
-                - システムテストフェーズ（全体統合テスト）
-                - リリース準備フェーズ（本番環境への展開準備）
+                【必須の階層構造ルール】
+                以下のフェーズ構造に沿って親子関係を明確に設定してください：
+
+                **親タスク（フェーズ）**:
+                - tmp_id 1: 要件定義フェーズ（tmp_parent_id: null）
+                - tmp_id 12: 基本設計フェーズ（tmp_parent_id: null）  
+                - tmp_id 23: 詳細設計フェーズ（tmp_parent_id: null）
+                - tmp_id 34: 実装フェーズ（tmp_parent_id: null）
+                - tmp_id 45: 結合テストフェーズ（tmp_parent_id: null）
+                - tmp_id 51: システムテストフェーズ（tmp_parent_id: null）
+                - tmp_id 54: リリース準備フェーズ（tmp_parent_id: null）
+
+                **子タスク（個別機能）**:
+                - 要件定義関連タスク → tmp_parent_id: 1 を設定
+                - 基本設計関連タスク → tmp_parent_id: 12 を設定
+                - 詳細設計関連タスク → tmp_parent_id: 23 を設定
+                - 実装関連タスク → tmp_parent_id: 34 を設定
+                - 結合テスト関連タスク → tmp_parent_id: 45 を設定
+                - システムテスト関連タスク → tmp_parent_id: 51 を設定
+                - リリース準備関連タスク → tmp_parent_id: 54 を設定
 
                 【動的期間設定ルール】
                 - 難易度「小」: 1-3日間
@@ -440,10 +439,10 @@ public class ExcelAnalyzerService {
 
                 [
                   {
-                    "id": 1,
+                    "tmp_id": 1,
                     "title": "要件定義フェーズ",
                     "assignee": "PM",
-                    "parentId": null,
+                    "tmp_parent_id": null,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -451,10 +450,32 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   },
                   {
-                    "id": 2,
-                    "title": "[Excelで見つかった機能名]の要件定義",
+                    "tmp_id": 2,
+                    "title": "[機能名]の要件定義",
                     "assignee": "担当者A",
-                    "parentId": 1,
+                    "tmp_parent_id": 1,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "tmp_id": 12,
+                    "title": "基本設計フェーズ",
+                    "assignee": "PM", 
+                    "tmp_parent_id": null,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "tmp_id": 13,
+                    "title": "[機能名]の基本設計",
+                    "assignee": "担当者A",
+                    "tmp_parent_id": 12,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -464,13 +485,13 @@ public class ExcelAnalyzerService {
                 ]
 
                 【重要な制約】
-                - IDは1から連番で設定
-                - 親タスクのIDは子タスクより小さくする
+                - tmp_idは1から連番で設定
+                - **tmp_parent_idを必ず正しく設定する**（フェーズタスクはnull、個別機能タスクは対応するフェーズのtmp_idを指定）
                 - 日付はyyyy-MM-dd形式（%s から開始）
                 - statusは"ToDo"固定
-                - parentIdは親タスクのid、最上位はnull
                 - 機能名は元データから動的に取得して使用
                 - JSONのみ出力（説明文なし）
+                - id、parent_idフィールドは出力しないでください（tmp_id、tmp_parent_idのみ使用）
 
                 【解析対象データ】
                 %s
@@ -480,6 +501,10 @@ public class ExcelAnalyzerService {
                 startDate.plusWeeks(1).format(DATE_FORMATTER),
                 startDate.format(DATE_FORMATTER),
                 startDate.plusDays(3).format(DATE_FORMATTER),
+                startDate.plusWeeks(1).format(DATE_FORMATTER),
+                startDate.plusWeeks(2).format(DATE_FORMATTER),
+                startDate.plusWeeks(1).plusDays(1).format(DATE_FORMATTER),
+                startDate.plusWeeks(1).plusDays(3).format(DATE_FORMATTER),
                 startDate.format(DATE_FORMATTER),
                 excelDataJson);
     }
@@ -723,17 +748,17 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * モックデータ生成（完全汎用版 - 具体的な機能名を含まない）
+     * モックデータ生成（tmp_id対応版）
      */
     private String generateMockTaskData() {
         LocalDate now = LocalDate.now();
         return String.format("""
                 [
                   {
-                    "id": 1,
+                    "tmp_id": 1,
                     "title": "要件定義フェーズ",
                     "assignee": "PM",
-                    "parentId": null,
+                    "tmp_parent_id": null,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -741,10 +766,32 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   },
                   {
-                    "id": 2,
+                    "tmp_id": 2,
+                    "title": "機能Aの要件定義",
+                    "assignee": "担当者A",
+                    "tmp_parent_id": 1,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "tmp_id": 3,
+                    "title": "機能Bの要件定義",
+                    "assignee": "担当者B",
+                    "tmp_parent_id": 1,
+                    "plan_start": "%s",
+                    "plan_end": "%s",
+                    "actual_start": "",
+                    "actual_end": "",
+                    "status": "ToDo"
+                  },
+                  {
+                    "tmp_id": 12,
                     "title": "基本設計フェーズ",
                     "assignee": "PM",
-                    "parentId": null,
+                    "tmp_parent_id": null,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -752,10 +799,10 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   },
                   {
-                    "id": 3,
-                    "title": "実装フェーズ",
-                    "assignee": "開発チーム",
-                    "parentId": null,
+                    "tmp_id": 13,
+                    "title": "機能Aの基本設計",
+                    "assignee": "担当者A",
+                    "tmp_parent_id": 12,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -763,10 +810,10 @@ public class ExcelAnalyzerService {
                     "status": "ToDo"
                   },
                   {
-                    "id": 4,
-                    "title": "テストフェーズ",
-                    "assignee": "テスト担当",
-                    "parentId": null,
+                    "tmp_id": 14,
+                    "title": "機能Bの基本設計",
+                    "assignee": "担当者B",
+                    "tmp_parent_id": 12,
                     "plan_start": "%s",
                     "plan_end": "%s",
                     "actual_start": "",
@@ -776,16 +823,20 @@ public class ExcelAnalyzerService {
                 ]""",
                 now.format(DATE_FORMATTER),
                 now.plusWeeks(1).format(DATE_FORMATTER),
+                now.format(DATE_FORMATTER),
+                now.plusDays(2).format(DATE_FORMATTER),
+                now.plusDays(2).format(DATE_FORMATTER),
+                now.plusDays(4).format(DATE_FORMATTER),
                 now.plusWeeks(1).format(DATE_FORMATTER),
                 now.plusWeeks(2).format(DATE_FORMATTER),
-                now.plusWeeks(2).format(DATE_FORMATTER),
-                now.plusWeeks(4).format(DATE_FORMATTER),
-                now.plusWeeks(4).format(DATE_FORMATTER),
-                now.plusWeeks(5).format(DATE_FORMATTER));
+                now.plusWeeks(1).format(DATE_FORMATTER),
+                now.plusWeeks(1).plusDays(3).format(DATE_FORMATTER),
+                now.plusWeeks(1).plusDays(3).format(DATE_FORMATTER),
+                now.plusWeeks(2).format(DATE_FORMATTER));
     }
 
     /**
-     * JSON文字列をTaskDtoのリストに変換
+     * JSON文字列をTaskDtoのリストに変換（tmp_id対応版）
      */
     private List<TaskDto> parseTaskJson(String json) {
         try {
@@ -820,7 +871,8 @@ public class ExcelAnalyzerService {
 
             for (int i = 0; i < taskArray.length; i++) {
                 TaskDto task = taskArray[i];
-                logger.debug("タスク{}: {}", i + 1, task.title);
+                logger.debug("タスク{}: {} (tmp_id: {}, tmp_parent_id: {})", 
+                    i + 1, task.title, task.tmp_id, task.tmp_parent_id);
 
                 // 必須フィールドの初期化
                 if (task.status == null || task.status.isEmpty()) {
@@ -856,6 +908,9 @@ public class ExcelAnalyzerService {
         }
     }
 
+    /**
+     * DTO → Entity の変換（tmp_id対応版）
+     */
     private Task convertToEntity(TaskDto dto) {
         Task task = new Task();
         if (dto.id != null && dto.id > 0) {
@@ -869,9 +924,16 @@ public class ExcelAnalyzerService {
         task.setActual_end(parseDate(dto.actual_end));
         task.setStatus(dto.status);
         task.setParentId(dto.parent_id);
+        
+        // 追加: tmp_id の設定
+        task.setTmpId(dto.tmp_id);
+        
         return task;
     }
 
+    /**
+     * Entity → DTO の変換（tmp_id対応版）
+     */
     private TaskDto convertToDto(Task entity) {
         TaskDto dto = new TaskDto();
         dto.id = entity.getId();
@@ -883,9 +945,16 @@ public class ExcelAnalyzerService {
         dto.actual_end = entity.getActual_end() != null ? entity.getActual_end().format(DATE_FORMATTER) : "";
         dto.status = entity.getStatus();
         dto.parent_id = entity.getParentId();
+        
+        // 追加: tmp_id の設定
+        dto.tmp_id = entity.getTmpId();
+        
         return dto;
     }
 
+    /**
+     * 文字列の日付をLocalDate型に変換するユーティリティメソッド
+     */
     private LocalDate parseDate(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return null;

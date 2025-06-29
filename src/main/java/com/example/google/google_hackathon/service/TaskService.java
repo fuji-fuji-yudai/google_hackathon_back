@@ -95,7 +95,7 @@ public class TaskService {
         System.out.println("親タスク削除: ID " + taskId);
     }
 
-    // Entity → DTO の変換
+       // Entity → DTO の変換
     private TaskDto toDto(Task task) {
         TaskDto dto = new TaskDto();
         dto.id = task.getId();
@@ -129,6 +129,11 @@ public class TaskService {
         
         dto.status = task.getStatus();
         dto.parent_id = task.getParentId();
+        
+        // 追加: tmp_id の設定
+        dto.tmp_id = task.getTmpId();
+        // tmp_parent_id はDTOからEntityへの変換時のみ使用するため、ここでは設定しない
+        
         return dto;
     }
 
@@ -163,6 +168,9 @@ public class TaskService {
         
         task.setStatus(dto.status);
         task.setParentId(dto.parent_id);
+        
+        // 追加: tmp_id の設定
+        task.setTmpId(dto.tmp_id);
 
         return task;
     }

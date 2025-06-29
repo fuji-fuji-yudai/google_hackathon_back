@@ -34,4 +34,8 @@ public class Task {
     // データベースのカラム名は親クラスとの関係を明確にするため snake_case のままにする
     @Column(name = "parent_id")
     private Integer parentId;
+    
+    // 追加: AI生成時の一時ID（デバッグ・トレース用、オプション）
+    @Column(name = "tmp_id")
+    private Integer tmpId;
 }
