@@ -45,7 +45,7 @@ public class GoogleCalendarService {
     private String serviceAccountSecretId;
 
     // 委任ユーザーのメールアドレス (Cloud Runの環境変数名に合わせ、Secret Managerを経由しないので直接値を受け取る)
-    @Value("${GOOGLECALENDAR_SERVICE_ACCOUNT_USER_EMAIL}")
+    @Value("testtest@gmail.com")
     private String delegatedUserEmail;
 
     private final ObjectMapper objectMapper;
