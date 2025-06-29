@@ -63,70 +63,109 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * ExcelからのタスクをDBに保存する（tmp_id方式）
+     * ExcelからのタスクをDBに保存する（tmp_id方式・デバッグ強化版）
      */
     public List<TaskDto> saveExcelTasks(List<TaskDto> taskDtos) {
         logger.info("=== tmp_id方式でExcelタスク保存開始 ===");
         logger.info("保存対象タスク数: {}", taskDtos.size());
 
         try {
-            // Step 1: tmp_id -> 実際のIDのマッピングを構築するため、全タスクを保存
-            Map<Integer, Integer> tmpIdToRealIdMap = new HashMap<>();
-            List<Task> savedTasks = new ArrayList<>();
-            
-            for (TaskDto dto : taskDtos) {
-                Task entity = convertToEntity(dto);
-                entity.setId(null); // 自動採番させる
-                entity.setParentId(null); // 後で設定
-                entity.setTmpId(dto.tmp_id); // AI生成の論理IDを保持
-                
-                Task saved = taskManageRepository.save(entity);
-                savedTasks.add(saved);
-                
-                // マッピングを記録
-                if (dto.tmp_id != null) {
-                    tmpIdToRealIdMap.put(dto.tmp_id, saved.getId());
-                    logger.info("IDマッピング: tmp_id:{} -> real_id:{} ({})", 
-                        dto.tmp_id, saved.getId(), dto.title);
-                }
-            }
-            
-            // Step 2: tmp_parent_idを使って実際の親子関係を設定
-            List<Task> tasksToUpdate = new ArrayList<>();
-            
+            // 受信データの詳細確認
+            logger.info("=== 受信データ詳細確認 ===");
             for (int i = 0; i < taskDtos.size(); i++) {
                 TaskDto dto = taskDtos.get(i);
-                Task saved = savedTasks.get(i);
-                
-                if (dto.tmp_parent_id != null) {
-                    Integer realParentId = tmpIdToRealIdMap.get(dto.tmp_parent_id);
-                    if (realParentId != null) {
-                        saved.setParentId(realParentId);
-                        tasksToUpdate.add(saved);
-                        
-                        logger.info("親子関係設定: {} -> 親tmp_id:{} -> 親real_id:{}", 
-                            dto.title, dto.tmp_parent_id, realParentId);
-                    } else {
-                        logger.warn("親タスクが見つからない: {} -> tmp_parent_id:{}", 
-                            dto.title, dto.tmp_parent_id);
-                    }
+                logger.info("タスク{}: title='{}', tmp_id={}, tmp_parent_id={}",
+                        i + 1, dto.title, dto.tmp_id, dto.tmp_parent_id);
+            }
+
+            // Step 1: 親タスクを先に保存（tmp_parent_id が null のもの）
+            Map<Integer, Integer> tmpIdToRealIdMap = new HashMap<>();
+            List<Task> allSavedTasks = new ArrayList<>();
+
+            // 親タスクの保存
+            logger.info("=== Step 1: 親タスク保存 ===");
+            List<TaskDto> parentTasks = taskDtos.stream()
+                    .filter(dto -> dto.tmp_parent_id == null)
+                    .collect(Collectors.toList());
+
+            logger.info("親タスク数: {}", parentTasks.size());
+
+            for (TaskDto dto : parentTasks) {
+                Task entity = convertToEntity(dto);
+                entity.setId(null); // 自動採番
+                entity.setParentId(null); // 親タスクなのでnull
+                entity.setTmpId(dto.tmp_id);
+
+                Task saved = taskManageRepository.save(entity);
+                allSavedTasks.add(saved);
+
+                if (dto.tmp_id != null) {
+                    tmpIdToRealIdMap.put(dto.tmp_id, saved.getId());
+                    logger.info("親タスクIDマッピング: tmp_id:{} -> real_id:{} ({})",
+                            dto.tmp_id, saved.getId(), dto.title);
                 }
             }
-            
-            // Step 3: 親子関係を設定したタスクを一括更新
-            if (!tasksToUpdate.isEmpty()) {
-                taskManageRepository.saveAll(tasksToUpdate);
-                logger.info("親子関係更新完了: {}件", tasksToUpdate.size());
+
+            // Step 2: 子タスクの保存（tmp_parent_id が設定されているもの）
+            logger.info("=== Step 2: 子タスク保存 ===");
+            List<TaskDto> childTasks = taskDtos.stream()
+                    .filter(dto -> dto.tmp_parent_id != null)
+                    .collect(Collectors.toList());
+
+            logger.info("子タスク数: {}", childTasks.size());
+
+            for (TaskDto dto : childTasks) {
+                Task entity = convertToEntity(dto);
+                entity.setId(null); // 自動採番
+                entity.setTmpId(dto.tmp_id);
+
+                // 親IDの解決
+                Integer realParentId = tmpIdToRealIdMap.get(dto.tmp_parent_id);
+                if (realParentId != null) {
+                    entity.setParentId(realParentId);
+                    logger.info("子タスク親ID設定: {} -> tmp_parent_id:{} -> real_parent_id:{}",
+                            dto.title, dto.tmp_parent_id, realParentId);
+                } else {
+                    logger.error("親タスクが見つからない: {} -> tmp_parent_id:{}",
+                            dto.title, dto.tmp_parent_id);
+                    logger.error("利用可能なtmp_id: {}", tmpIdToRealIdMap.keySet());
+                    // 親が見つからない場合はnullにして続行
+                    entity.setParentId(null);
+                }
+
+                Task saved = taskManageRepository.save(entity);
+                allSavedTasks.add(saved);
+
+                if (dto.tmp_id != null) {
+                    tmpIdToRealIdMap.put(dto.tmp_id, saved.getId());
+                    logger.info("子タスクIDマッピング: tmp_id:{} -> real_id:{} ({})",
+                            dto.tmp_id, saved.getId(), dto.title);
+                }
             }
-            
+
+            // Step 3: 保存結果の確認
+            logger.info("=== Step 3: 保存結果確認 ===");
+            logger.info("総保存タスク数: {}", allSavedTasks.size());
+
+            for (Task task : allSavedTasks) {
+                logger.info("保存済みタスク: id={}, title='{}', parent_id={}, tmp_id={}",
+                        task.getId(), task.getTitle(), task.getParentId(), task.getTmpId());
+            }
+
             // Step 4: 最終結果を返す
-            List<TaskDto> result = taskManageRepository.findAll().stream()
+            List<TaskDto> result = allSavedTasks.stream()
                     .map(this::convertToDto)
                     .collect(Collectors.toList());
-                    
+
             logger.info("=== 保存完了: 総タスク数:{} ===", result.size());
+
+            // 結果の階層構造確認
+            long parentCount = result.stream().filter(dto -> dto.parent_id == null).count();
+            long childCount = result.stream().filter(dto -> dto.parent_id != null).count();
+            logger.info("結果: 親タスク{}個, 子タスク{}個", parentCount, childCount);
+
             return result;
-            
+
         } catch (Exception e) {
             logger.error("tmp_id方式でのタスク保存中にエラー", e);
             throw new RuntimeException("タスクの保存に失敗しました: " + e.getMessage(), e);
@@ -405,7 +444,7 @@ public class ExcelAnalyzerService {
 
                 **親タスク（フェーズ）**:
                 - tmp_id 1: 要件定義フェーズ（tmp_parent_id: null）
-                - tmp_id 12: 基本設計フェーズ（tmp_parent_id: null）  
+                - tmp_id 12: 基本設計フェーズ（tmp_parent_id: null）
                 - tmp_id 23: 詳細設計フェーズ（tmp_parent_id: null）
                 - tmp_id 34: 実装フェーズ（tmp_parent_id: null）
                 - tmp_id 45: 結合テストフェーズ（tmp_parent_id: null）
@@ -463,7 +502,7 @@ public class ExcelAnalyzerService {
                   {
                     "tmp_id": 12,
                     "title": "基本設計フェーズ",
-                    "assignee": "PM", 
+                    "assignee": "PM",
                     "tmp_parent_id": null,
                     "plan_start": "%s",
                     "plan_end": "%s",
@@ -871,8 +910,8 @@ public class ExcelAnalyzerService {
 
             for (int i = 0; i < taskArray.length; i++) {
                 TaskDto task = taskArray[i];
-                logger.debug("タスク{}: {} (tmp_id: {}, tmp_parent_id: {})", 
-                    i + 1, task.title, task.tmp_id, task.tmp_parent_id);
+                logger.debug("タスク{}: {} (tmp_id: {}, tmp_parent_id: {})",
+                        i + 1, task.title, task.tmp_id, task.tmp_parent_id);
 
                 // 必須フィールドの初期化
                 if (task.status == null || task.status.isEmpty()) {
@@ -924,10 +963,10 @@ public class ExcelAnalyzerService {
         task.setActual_end(parseDate(dto.actual_end));
         task.setStatus(dto.status);
         task.setParentId(dto.parent_id);
-        
+
         // 追加: tmp_id の設定
         task.setTmpId(dto.tmp_id);
-        
+
         return task;
     }
 
@@ -945,10 +984,10 @@ public class ExcelAnalyzerService {
         dto.actual_end = entity.getActual_end() != null ? entity.getActual_end().format(DATE_FORMATTER) : "";
         dto.status = entity.getStatus();
         dto.parent_id = entity.getParentId();
-        
+
         // 追加: tmp_id の設定
         dto.tmp_id = entity.getTmpId();
-        
+
         return dto;
     }
 
