@@ -652,9 +652,6 @@ public class ExcelAnalyzerService {
      * テキストからJSON配列を抽出する改善されたメソッド
      */
     private String extractJsonFromText(String text) {
-        logger.info("=== JSON抽出開始 ===");
-        logger.info("抽出対象テキスト: {}", text);
-
         // 複数のパターンでJSON抽出を試行
         String[] patterns = {
                 "\\[.*?\\]", // 基本的な配列パターン
@@ -664,40 +661,26 @@ public class ExcelAnalyzerService {
 
         for (int i = 0; i < patterns.length; i++) {
             String pattern = patterns[i];
-            logger.debug("パターン{}を試行: {}", i + 1, pattern);
-
             java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
             java.util.regex.Matcher m = p.matcher(text);
             if (m.find()) {
                 String found = m.group();
-                logger.info("パターン{}でマッチしました: {}", i + 1, found.substring(0, Math.min(100, found.length())) + "...");
-
                 // マークダウンマーカーを除去
                 found = found.replaceAll("```json|```", "").trim();
-
                 // 簡単な妥当性チェック
                 if (found.startsWith("[") && found.endsWith("]")) {
-                    logger.info("JSON形式チェック: OK");
                     return found;
-                } else {
-                    logger.warn("JSON形式チェック: NG - '[' または ']' が見つからない");
                 }
-            } else {
-                logger.debug("パターン{}はマッチしませんでした", i + 1);
             }
         }
 
         // フォールバック: 手動で最初の [から最後の ] まで抽出
-        logger.info("フォールバック抽出を試行");
         int startIdx = text.indexOf('[');
         int endIdx = text.lastIndexOf(']');
         if (startIdx >= 0 && endIdx > startIdx) {
-            String extracted = text.substring(startIdx, endIdx + 1);
-            logger.info("フォールバック抽出成功: {}", extracted.substring(0, Math.min(100, extracted.length())) + "...");
-            return extracted;
+            return text.substring(startIdx, endIdx + 1);
         }
 
-        logger.error("全てのJSON抽出方法が失敗しました");
         return null;
     }
 
