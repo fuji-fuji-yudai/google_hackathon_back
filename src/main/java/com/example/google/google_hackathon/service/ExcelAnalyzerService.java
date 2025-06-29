@@ -948,9 +948,13 @@ public class ExcelAnalyzerService {
     }
 
     /**
-     * DTO → Entity の変換（tmp_id対応版）
+     * DTO → Entity の変換（tmp_id対応版・デバッグ強化）
      */
     private Task convertToEntity(TaskDto dto) {
+        logger.info("=== convertToEntity開始 ===");
+        logger.info("DTO: title='{}', tmp_id={}, tmp_parent_id={}, parent_id={}",
+                dto.title, dto.tmp_id, dto.tmp_parent_id, dto.parent_id);
+
         Task task = new Task();
         if (dto.id != null && dto.id > 0) {
             task.setId(dto.id);
@@ -966,6 +970,10 @@ public class ExcelAnalyzerService {
 
         // 追加: tmp_id の設定
         task.setTmpId(dto.tmp_id);
+
+        logger.info("Entity: title='{}', tmpId={}, parentId={}",
+                task.getTitle(), task.getTmpId(), task.getParentId());
+        logger.info("=== convertToEntity完了 ===");
 
         return task;
     }
