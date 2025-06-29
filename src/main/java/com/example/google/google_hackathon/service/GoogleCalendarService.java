@@ -41,7 +41,7 @@ public class GoogleCalendarService {
     private static final NetHttpTransport HTTP_TRANSPORT = new NetHttpTransport();
 
     // サービスアカウントキーが格納されているシークレットのID (Cloud Runの環境変数名に合わせる)
-    @Value("${GOOGLECALENDAR_SERVICE_ACCOUNT_SECRET_ID}")
+    @Value("${google.service-account.secret-id}")
     //@Value("calendar-service-account-key")
     private String serviceAccountSecretId;
 
