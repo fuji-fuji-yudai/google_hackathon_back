@@ -9,6 +9,8 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventAttendee;
 import com.google.api.services.calendar.model.EventDateTime;
+import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -32,6 +34,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import com.google.auth.oauth2.ServiceAccountCredentials;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+
 
 @Service
 public class GoogleCalendarService {
@@ -102,24 +107,43 @@ public class GoogleCalendarService {
         }
     }
 
-    private Calendar getCalendarService(String userEmailToImpersonate) throws IOException, GeneralSecurityException {
-        logger.info("Google Calendarサービスを初期化中。委任ユーザー: {}", userEmailToImpersonate);
+    // private Calendar getCalendarService(String userEmailToImpersonate) throws IOException, GeneralSecurityException {
+    //     logger.info("Google Calendarサービスを初期化中。委任ユーザー: {}", userEmailToImpersonate);
 
-        // サービスアカウントキーのバイト配列がnullでないことを確認
-        if (serviceAccountKeyBytes == null) {
-            throw new IllegalStateException("Service account key bytes not loaded. init() method might have failed.");
-        }
+    //     // サービスアカウントキーのバイト配列がnullでないことを確認
+    //     if (serviceAccountKeyBytes == null) {
+    //         throw new IllegalStateException("Service account key bytes not loaded. init() method might have failed.");
+    //     }
 
-        InputStream keyStream = new ByteArrayInputStream(serviceAccountKeyBytes);
+    //     InputStream keyStream = new ByteArrayInputStream(serviceAccountKeyBytes);
 
-        GoogleCredential credential = GoogleCredential.fromStream(keyStream)
-                .createScoped(Collections.singleton(CalendarScopes.CALENDAR))
-                .createDelegated(userEmailToImpersonate);
+    //     GoogleCredential credential = GoogleCredential.fromStream(keyStream)
+    //             .createScoped(Collections.singleton(CalendarScopes.CALENDAR))
+    //             .createDelegated(userEmailToImpersonate);
 
-        return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
-                .setApplicationName("Google Hackathon Application")
-                .build();
+    //     return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
+    //             .setApplicationName("Google Hackathon Application")
+    //             .build();
+    // }
+    
+private Calendar getCalendarService(String userEmailToImpersonate) throws IOException, GeneralSecurityException {
+    logger.info("Google Calendarサービスを初期化中。委任ユーザー: {}", userEmailToImpersonate);
+
+    if (serviceAccountKeyBytes == null) {
+        throw new IllegalStateException("Service account key bytes not loaded. init() method might have failed.");
     }
+
+    InputStream keyStream = new ByteArrayInputStream(serviceAccountKeyBytes);
+
+    ServiceAccountCredentials credentials = (ServiceAccountCredentials)ServiceAccountCredentials.fromStream(keyStream)
+        .createScoped(Collections.singleton(CalendarScopes.CALENDAR))
+        .createDelegated(userEmailToImpersonate);
+
+    return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, new HttpCredentialsAdapter(credentials))
+        .setApplicationName("Google Hackathon Application")
+        .build();
+}
+
 
     public JsonNode createGoogleCalendarEvent(
             String title,
