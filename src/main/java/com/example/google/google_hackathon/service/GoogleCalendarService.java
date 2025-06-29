@@ -62,8 +62,8 @@ public class GoogleCalendarService {
     @PostConstruct
     public void init() throws IOException {
         // @Valueによって注入された serviceAccountSecretId の値を確認
-        logger.info("serviceAccountSecretId (from @Value): [{}]", serviceAccountSecretId);
-        logger.info("delegatedUserEmail (from @Value): [{}]", delegatedUserEmail);
+        logger.info("serviceAccountSecretId (from @Value): {}", serviceAccountSecretId);
+        logger.info("delegatedUserEmail (from @Value): {}", delegatedUserEmail);
 
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
             logger.info("サービスアカウントキーをSecret Managerから取得中。Secret ID: {}", serviceAccountSecretId);
