@@ -80,7 +80,8 @@ public class GoogleCalendarService {
                     .build();
 
             // 構築されたSecret Version Nameの文字列を確認
-            logger.info("Constructed Secret Version Name: [{}]", serviceAccountKeyName.toString());
+            // logger.info("Constructed Secret Version Name: [{}]",
+            // serviceAccountKeyName.toString());
 
             AccessSecretVersionResponse keyResponse = client.accessSecretVersion(serviceAccountKeyName);
             this.serviceAccountKeyBytes = keyResponse.getPayload().getData().toByteArray();
