@@ -595,7 +595,7 @@ public class ExcelAnalyzerService {
         generationConfig.addProperty("temperature", 0.1); // 一貫性重視
         generationConfig.addProperty("topK", 1); // 最も確率の高い選択
         generationConfig.addProperty("topP", 0.8); // 高品質な出力
-        generationConfig.addProperty("maxOutputTokens", 8192);
+        generationConfig.addProperty("maxOutputTokens", 32768);
         requestBody.add("generationConfig", generationConfig);
 
         return requestBody;
